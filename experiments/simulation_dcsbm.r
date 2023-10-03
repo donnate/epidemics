@@ -149,8 +149,8 @@ for (exp in 1:100){
       res_temp["n"] <- n
       res_temp["dc_heterogeneity"] <- dc_heterogeneity
       res_temp["nb_blocks"] <- nb_blocks
-      res_temp["p_between"] <- p_between
-      res_temp["p_within"] <- p_within
+      res_temp["p_between"] <- proba_between
+      res_temp["p_within"] <- proba_within
       res_temp["steps"] <- steps
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
