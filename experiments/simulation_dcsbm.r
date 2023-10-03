@@ -101,8 +101,7 @@ for (exp in 1:100){
   #graph_attributes$W[subject_0, neighbors]
   for (lambda in 10^(seq(from = -3, to = 3, by = 0.25))) {
     print(c(lambda, p_norm))
-    print(graph_attributes$Gamma)
-    
+
     p_hat <- tryCatch(
         cvx_solver(y_init,
                    graph_attributes$Gamma,
