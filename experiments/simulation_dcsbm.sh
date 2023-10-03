@@ -22,7 +22,7 @@ module load R/4.2.0
 result_file="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "result file is ${result_file}"
 cd $SCRATCH/$USER/epidemic_modelling/
-Rscript experiments/simulation_dcsbm.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8
+Rscript experiments/simulation_dcsbm.r $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)

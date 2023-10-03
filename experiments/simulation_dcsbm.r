@@ -86,7 +86,7 @@ if (is.null(heterogeneity_rates) || heterogeneity_rates == "none") {
   } else {
     beta_v <- rexp(1 / beta_epid, n = n)  ### turn into a vector
     gamma_v <- rexp(1 / gamma_epid, n = n)
-  }quit
+  }
 }
 graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
 
