@@ -1,22 +1,31 @@
 
 
-get_edge_incidence <- function(g, graph = "SBM", Theta=NULL,
-                               Z = NULL){
+get_edge_incidence <- function(g, beta_v,
+                               graph = "SBM", Theta=NULL,
+                               Z = NULL, weight = 1){
   n_nodes = vcount(g)
-  edges = data.frame(as_edgelist(g)) %>% 
-    filter(X1 < X2)
+  edges = data.frame(as_edgelist(g)) %>%
+    arrange(X1, X2)
+  W = matrix(0, nrow = n_nodes, ncol=n_nodes)
   Gamma = matrix(0, nrow(edges), n_nodes)
   if (graph  != "SBM"){
-    weights = runif(n=nrow(edges))
+    if (weight == 1) {
+      weights = rep(1, nrow(edges))
+    } else {
+      weights = runif(n=nrow(edges), min = 0.5, max=1)
+    }
   }else{
     weights = sapply(1:nrow(edges), function(i){Theta[Z[edges$X1[i]], Z[edges$X2[i]]]})
   }
+  infection_weight = 
   edges["weights"]= weights
-  g2 <- graph_from_data_frame(edges, directed = FALSE)  # Set directed to TRUE if you have a directed graph
-  E(g2)$weight = edges$weights
-  adj_matrix <- as_adjacency_matrix(g2, attr = "weight", sparse = FALSE)
-  Gamma[,edges$X1] = weights
-  Gamma[,edges$X2] = - weights
+  # Make beta_v into a matrix
+  for (e in 1:nrow(edges)){
+    W[edges$X1[e], edges$X2[e]] = edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
+    W[edges$X2[e], edges$X1[e]] = edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
+    Gamma[e,edges$X1[e]] = edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
+    Gamma[e,edges$X2[e]] = - edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
+  }
   return(list(Gamma=Gamma,
-              W = adj_matrix))
+              W = W))
 }
