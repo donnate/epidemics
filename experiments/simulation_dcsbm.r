@@ -144,6 +144,17 @@ for (exp in 1:100){
       res_temp["max_cls"] <- max(cls)
       
       res_temp["exp"] <- exp
+      res_temp["beta_epid"] <- beta_epid
+      res_temp["gamma_epid"] <- gamma_epid
+      res_temp["n"] <- n
+      res_temp["dc_heterogeneity"] <- dc_heterogeneity
+      res_temp["nb_blocks"] <- nb_blocks
+      res_temp["p_between"] <- p_between
+      res_temp["p_within"] <- p_within
+      res_temp["steps"] <- steps
+      res_temp["heterogeneity_rates"] <- heterogeneity_rates
+      res_temp["nb_init"] <- nb_init
+      res_temp["p_norm"] <- p_norm
 
       # Propagate solution
       prop_sol <- propagate_solution(graph_attributes$W, p_hat, state$beta_v, 
