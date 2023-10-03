@@ -39,7 +39,7 @@ if (dc_heterogeneity == "none"){
 # Create random graph
 dcsbm_graph <- dcsbm(
   n = NULL,
-  theta = ,
+  theta = dc_vector,
   B = B,
   sort_nodes = TRUE,
   allow_self_loops = FALSE
