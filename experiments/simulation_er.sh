@@ -16,7 +16,6 @@ echo "My SLURM_ARRAY_JOB_ID: " $SLURM_ARRAY_JOB_ID
 job_id=$SLURM_ARRAY_JOB_ID
 module load gsl
 module load gcc
-module load aocc
 module load R/4.2.0
 
 result_file="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
