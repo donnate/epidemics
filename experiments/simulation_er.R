@@ -30,17 +30,6 @@ if (do_plot) {
        edge.arrow.size = 0, vertex.label = NA)
 }
 
-# Assign initial patients
-y_init <- rep(0, n)
-subject_0 <- sample(1:n, nb_init)
-y_init[subject_0] <- 1
-
-# Record statistics on the initial patients
-d <- degree(g, v = subject_0,
-            mode = "total", loops = TRUE,
-            normalized = FALSE)
-btw <- betweenness(g, v = subject_0)
-cls <- closeness(g, v = subject_0)
 
 #neighbors <- as.numeric(neighborhood(g, nodes = c(subject_0), mindist=1)[[1]])
 #neighbors2 <- as.numeric(neighborhood(g, order=2, nodes = c(subject_0), mindist=2)[[1]])
@@ -66,6 +55,18 @@ graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
 
 res <- c()
 for (exp in 1:100){
+  # Assign initial patients
+  y_init <- rep(0, n)
+  subject_0 <- sample(1:n, nb_init)
+  y_init[subject_0] <- 1
+
+  # Record statistics on the initial patients
+  d <- degree(g, v = subject_0,
+              mode = "total", loops = TRUE,
+              normalized = FALSE)
+  btw <- betweenness(g, v = subject_0)
+  cls <- closeness(g, v = subject_0)
+
   state <- simulate_epidemic(graph_attributes$W,
                              y_init = y_init,
                              beta_v = beta_v,
@@ -73,7 +74,7 @@ for (exp in 1:100){
                              steps = steps)
   
   #graph_attributes$W[subject_0, neighbors]
-  for (lambda in 10^(seq(from = -3, to = 3, by = 0.25))) {
+  for (lambda in 10^(seq(from = -5, to = 1, by = 0.25))) {
     
     p_hat <- tryCatch(
         cvx_solver(y_init,
