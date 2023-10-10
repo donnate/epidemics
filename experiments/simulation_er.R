@@ -22,39 +22,39 @@ if (p_norm != "inf"){
 }
 do_plot <- FALSE
 
-# Create random graph
-g <- sample_gnm(n, m = rbinom(1, prob=proba_er, size=n^2-n), directed = FALSE)
-if (do_plot) {
-  layout <- layout_with_fr(g)
-  plot(g, layout = layout, vertex.size = 4,
-       edge.arrow.size = 0, vertex.label = NA)
-}
-
-
-#neighbors <- as.numeric(neighborhood(g, nodes = c(subject_0), mindist=1)[[1]])
-#neighbors2 <- as.numeric(neighborhood(g, order=2, nodes = c(subject_0), mindist=2)[[1]])
-#print(neighbors)
-#edges_lst = which(graph_attributes$Gamma[, subject_0]!=0)
-#graph_attributes$Gamma[edges_lst, which(graph_attributes$Gamma[edges_lst, ]!=0, arr.ind=TRUE)[,2]]
-# Simulate one step of epidemic propagation
-
-### Turn the infection rates into a vector
-if (is.null(heterogeneity_rates) || heterogeneity_rates == "none") {
-  beta_v <- rep(beta_epid, n)
-  gamma_v <- rep(gamma_epid, n)
-} else {
-  if (heterogeneity_rates == "uniform") {
-    beta_v <- runif(beta_epid / 2, min(3 * beta_epid / 2, 1), n = n)
-    gamma_v <- runif(gamma_epid / 2, min(3 * gamma_epid / 2, 1), n = n)
-  } else {
-    beta_v <- rexp(1 / beta_epid, n = n)  ### turn into a vector
-    gamma_v <- rexp(1 / gamma_epid, n = n)
-  }
-}
-graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
 
 res <- c()
 for (exp in 1:100){
+    # Create random graph
+  g <- sample_gnm(n, m = rbinom(1, prob=proba_er, size=n^2-n), directed = FALSE)
+  if (do_plot) {
+    layout <- layout_with_fr(g)
+    plot(g, layout = layout, vertex.size = 4,
+        edge.arrow.size = 0, vertex.label = NA)
+  }
+
+
+  #neighbors <- as.numeric(neighborhood(g, nodes = c(subject_0), mindist=1)[[1]])
+  #neighbors2 <- as.numeric(neighborhood(g, order=2, nodes = c(subject_0), mindist=2)[[1]])
+  #print(neighbors)
+  #edges_lst = which(graph_attributes$Gamma[, subject_0]!=0)
+  #graph_attributes$Gamma[edges_lst, which(graph_attributes$Gamma[edges_lst, ]!=0, arr.ind=TRUE)[,2]]
+  # Simulate one step of epidemic propagation
+
+  ### Turn the infection rates into a vector
+  if (is.null(heterogeneity_rates) || heterogeneity_rates == "none") {
+    beta_v <- rep(beta_epid, n)
+    gamma_v <- rep(gamma_epid, n)
+  } else {
+    if (heterogeneity_rates == "uniform") {
+      beta_v <- runif(beta_epid / 2, min(3 * beta_epid / 2, 1), n = n)
+      gamma_v <- runif(gamma_epid / 2, min(3 * gamma_epid / 2, 1), n = n)
+    } else {
+      beta_v <- rexp(1 / beta_epid, n = n)  ### turn into a vector
+      gamma_v <- rexp(1 / gamma_epid, n = n)
+    }
+  }
+  graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
   # Assign initial patients
   y_init <- rep(0, n)
   subject_0 <- sample(1:n, nb_init)
