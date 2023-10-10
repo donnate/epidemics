@@ -66,7 +66,8 @@ for (exp in 1:100){
               mode = "total", loops = TRUE,
               normalized = FALSE)
   btw <- betweenness(g, v = subject_0)
-cls <- closeness(g, v = subject_0)
+  cls <- closeness(g, v = subject_0)
+
 
 
   state <- simulate_epidemic(graph_attributes$W,
