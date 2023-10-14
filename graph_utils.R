@@ -10,14 +10,14 @@ get_edge_incidence <- function(g, beta_v,
   Gamma = matrix(0, nrow(edges), n_nodes)
   if (graph  != "SBM"){
     if (weight == 1) {
-      weights = rep(1, nrow(edges))
+      weights = rep(1/n_nodes, nrow(edges))
     } else {
-      weights = runif(n=nrow(edges), min = 0.5, max=1)
+      weights = runif(n=nrow(edges), min = 0, max=1/n_nodes) #dirichlet
     }
   }else{
     weights = sapply(1:nrow(edges), function(i){Theta[Z[edges$X1[i]], Z[edges$X2[i]]]})
   }
-  infection_weight = 
+  #infection_weight = 
   edges["weights"]= weights
   # Make beta_v into a matrix
   for (e in 1:nrow(edges)){
