@@ -16,6 +16,7 @@ get_edge_incidence <- function(g, beta_v,
     }
   }else{
     weights = sapply(1:nrow(edges), function(i){Theta[Z[edges$X1[i]], Z[edges$X2[i]]]})
+    weights = weights/(max(Theta) * n)
   }
   #infection_weight = 
   edges["weights"]= weights
