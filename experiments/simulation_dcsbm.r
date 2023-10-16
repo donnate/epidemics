@@ -1,6 +1,7 @@
 library(tidyverse)
 library(igraph)
 library(fastRG)
+setwd("~/Documents/epidemic_modelling/")
 source("graph_utils.R")
 source("experiments/evaluate_solution.R")
 source("experiments/simulate_epidemic.R")
@@ -18,14 +19,17 @@ dc_heterogeneity <- args[7] # parameter of the DC-SBM graph
 heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 p_norm <- args[10]
+proba_between <- (as.numeric(args[11]))
+proba_within <- (as.numeric(args[12]))
+nb_blocks  <- ceiling(as.numeric(args[13]))
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
 do_plot <- FALSE
 
-nb_blocks <-  6
-proba_between <- 0.01
-proba_within <- 0.1
+#nb_blocks <-  6
+#proba_between <- 0.01
+#proba_within <- 0.1
 B <-  matrix(proba_between, nb_blocks, nb_blocks)
 diag(B) <- rep(proba_within, nb_blocks)
 
@@ -59,14 +63,14 @@ for (exp in 1:100){
   }
 
   # # Assign initial patients
-  # y_init <- rep(0, n)
-  # subject_0 <- sample(1:n, nb_init)
-  # y_init[subject_0] <- 1
+  y_init <- rep(0, n)
+  subject_0 <- sample(1:n, nb_init)
+  y_init[subject_0] <- 1
 
   print(c(n, vcount(g)))
   # Record statistics on the initial patients
   d <- degree(g, v = subject_0,
-              mode = "total", loops = TRUE,
+              mode = "total", loops = FALSE,
               normalized = FALSE)
   btw <- betweenness(g, v = subject_0)
   cls <- closeness(g, v = subject_0)
@@ -91,18 +95,8 @@ for (exp in 1:100){
       gamma_v <- rexp(1 / gamma_epid, n = n)
     }
   }
-  graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
-  # Assign initial patients
-  y_init <- rep(0, n)
-  subject_0 <- sample(1:n, nb_init)
-  y_init[subject_0] <- 1
+  graph_attributes <- get_edge_incidence(g, beta_v, graph = "DCSBM", weight=1)
 
-  # Record statistics on the initial patients
-  d <- degree(g, v = subject_0,
-              mode = "total", loops = TRUE,
-              normalized = FALSE)
-  btw <- betweenness(g, v = subject_0)
-  cls <- closeness(g, v = subject_0)
 
   state <- simulate_epidemic(graph_attributes$W,
                              y_init = y_init,
@@ -111,9 +105,8 @@ for (exp in 1:100){
                              steps = steps)
   
   #graph_attributes$W[subject_0, neighbors]
-  for (lambda in 10^(seq(from = -3, to = 3, by = 0.25))) {
+  for (lambda in 10^(seq(from = -5, to = -1, length.out = 30))) {
     print(c(lambda, p_norm))
-
     p_hat <- tryCatch(
         cvx_solver(y_init,
                    graph_attributes$Gamma,
@@ -185,7 +178,7 @@ for (exp in 1:100){
       write_csv(x = res, file=paste0("experiments/results/dcsbm_graph/", result_file))
 
     }
-
-
+    print(lambda)
   }
+  print(paste0("Finished experiment ", exp))
 }
