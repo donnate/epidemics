@@ -1,5 +1,6 @@
 library(tidyverse)
 library(igraph)
+ste
 source("graph_utils.R")
 source("experiments/evaluate_solution.R")
 source("experiments/simulate_epidemic.R")
@@ -13,34 +14,35 @@ n <- ceiling(as.numeric(args[3]))   # Number of nodes
 beta_epid <-  as.numeric(args[4]) # Infection rate
 gamma_epid <-  as.numeric(args[5]) # Recovery rate
 nb_init <-  ceiling(as.numeric(args[6])) # Nb of initial patients
-proba_er <- as.numeric(args[7]) # parameter of the ER graph
+p_sw <- as.numeric(args[7]) # parameter of the SW graph
 heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 p_norm <- args[10]
+nei <- ceiling(as.numeric(args[11])) # parameter of the SW graph
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
-do_plot <- FALSE
+do_plot <- FALSE #TRUE
 
 
 res <- c()
 for (exp in 1:100){
-    # Create random graph
-  g <- sample_gnm(n, m = rbinom(1, prob=proba_er, size=n^2-n), directed = FALSE)
+  # Create random graph
+  g <- sample_smallworld(dim=2, size=ceiling(n/2), nei= nei, p = p_sw, directed = FALSE)
   if (do_plot) {
     layout <- layout_with_fr(g)
     plot(g, layout = layout, vertex.size = 4,
-        edge.arrow.size = 0, vertex.label = NA)
+         edge.arrow.size = 0, vertex.label = NA)
   }
-
-
+  
+  
   #neighbors <- as.numeric(neighborhood(g, nodes = c(subject_0), mindist=1)[[1]])
   #neighbors2 <- as.numeric(neighborhood(g, order=2, nodes = c(subject_0), mindist=2)[[1]])
   #print(neighbors)
   #edges_lst = which(graph_attributes$Gamma[, subject_0]!=0)
   #graph_attributes$Gamma[edges_lst, which(graph_attributes$Gamma[edges_lst, ]!=0, arr.ind=TRUE)[,2]]
   # Simulate one step of epidemic propagation
-
+  
   ### Turn the infection rates into a vector
   if (is.null(heterogeneity_rates) || heterogeneity_rates == "none") {
     beta_v <- rep(beta_epid, n)
@@ -55,18 +57,21 @@ for (exp in 1:100){
     }
   }
   graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
+  #apply(graph_attributes$W,1, sum)
+  
   # Assign initial patients
   y_init <- rep(0, n)
   subject_0 <- sample(1:n, nb_init)
   y_init[subject_0] <- 1
-
+  
   # Record statistics on the initial patients
   d <- degree(g, v = subject_0,
               mode = "total", loops = TRUE,
               normalized = FALSE)
   btw <- betweenness(g, v = subject_0)
   cls <- closeness(g, v = subject_0)
-
+  
+  
   state <- simulate_epidemic(graph_attributes$W,
                              y_init = y_init,
                              beta_v = beta_v,
@@ -74,29 +79,29 @@ for (exp in 1:100){
                              steps = steps)
   
   #graph_attributes$W[subject_0, neighbors]
-  for (lambda in 10^(seq(from = -5, to = -1, length.out = 30)) {
+  for (lambda in 10^(seq(from = -5, to = -1, length.out = 30))) {
     
     p_hat <- tryCatch(
-        cvx_solver(y_init,
-                   graph_attributes$Gamma,
-                   lambda, p_norm=p_norm),
-        error = function(err) {
-          # Code to handle the error (e.g., print an error message, log the error, etc.)
-          cat("Error occurred while running CVXR:", conditionMessage(err), "\n")
-          # Return a default value or NULL to continue with the rest of the code
-          return(NULL)
-        }
-      )
+      cvx_solver(y_init,
+                 graph_attributes$Gamma,
+                 lambda, p_norm=p_norm),
+      error = function(err) {
+        # Code to handle the error (e.g., print an error message, log the error, etc.)
+        cat("Error occurred while running CVXR:", conditionMessage(err), "\n")
+        # Return a default value or NULL to continue with the rest of the code
+        return(NULL)
+      }
+    )
     if (is.null(p_hat) == FALSE) {
       p_hat[which(p_hat <0)]=0
-      p_hat[which(abs(p_hat) <1e-7)]=0
+      p_hat[which(abs(p_hat) < 1e-7)] = 0
       
       res_temp <- evaluate_solution(state$y_observed,
                                     p_hat,
                                     state$true_p,
                                     graph_attributes$Gamma)
       res_temp["lambda"] <- lambda
-
+      
       # add the init statistics
       res_temp["average_degree"] <- mean(d)
       res_temp["median_degree"] <- median(d)
@@ -120,29 +125,32 @@ for (exp in 1:100){
       res_temp["exp"] <- exp
       res_temp["beta_epid"] <- beta_epid
       res_temp["gamma_epid"] <- gamma_epid
-      res_temp["n"] <- n
-      res_temp["proba_er"] <- proba_er
+      res_temp["n"] <- vcount(g)
+      res_temp["p_sw"] <- p_sw
+      res_temp["nei"] <- nei
       res_temp["steps"] <- steps
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
-
+      
       # Propagate solution
       prop_sol <- propagate_solution(graph_attributes$W, p_hat, state$beta_v, 
-                                    state$gamma_v, 20)
+                                     state$gamma_v, 20)
       # Propagate real data
       prop_truth <- propagate_solution(graph_attributes$W, y_init, 
-                                      state$beta_v, state$gamma_v, 20)
+                                       state$beta_v, state$gamma_v, 20)
       # Compare the two
       for (it in 1:20){
         res_temp[ paste0("l1_propagated_error_", it)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
         res_temp[ paste0("l2_propagated_error_", it)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
       }
-
+      
       # add to list of res
       res <- rbind(res, res_temp)
-      write_csv(x = res, file=paste0("experiments/results/er_graph/", result_file))
-
+      write_csv(x = res, file=paste0("experiments/results/sw_graph/", result_file))
+      
     }
+    
+    
   }
 }

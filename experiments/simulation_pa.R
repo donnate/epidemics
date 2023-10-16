@@ -20,7 +20,7 @@ p_norm <- args[10]
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
-do_plot <- FALSE
+do_plot <- FALSE #TRUE
 
 
 res <- c()
@@ -55,7 +55,7 @@ for (exp in 1:100){
     }
   }
   graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
-
+  #apply(graph_attributes$W,1, sum)
 
   # Assign initial patients
   y_init <- rep(0, n)
@@ -69,8 +69,6 @@ for (exp in 1:100){
   btw <- betweenness(g, v = subject_0)
   cls <- closeness(g, v = subject_0)
 
-
-
   state <- simulate_epidemic(graph_attributes$W,
                              y_init = y_init,
                              beta_v = beta_v,
@@ -78,7 +76,7 @@ for (exp in 1:100){
                              steps = steps)
   
   #graph_attributes$W[subject_0, neighbors]
-  for (lambda in 10^(seq(from = -5, to = 1, by = 0.25))) {
+  for (lambda in 10^(seq(from = -5, to = -1, length.out = 30))) {
     
      p_hat <- tryCatch(
         cvx_solver(y_init,
@@ -124,7 +122,7 @@ for (exp in 1:100){
       res_temp["exp"] <- exp
       res_temp["beta_epid"] <- beta_epid
       res_temp["gamma_epid"] <- gamma_epid
-      res_temp["n"] <- n
+      res_temp["n"] <- vcount(g)
       res_temp["power_pa"] <- power_pa
       res_temp["steps"] <- steps
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
