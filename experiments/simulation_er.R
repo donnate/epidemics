@@ -1,5 +1,8 @@
 library(tidyverse)
 library(igraph)
+library(ggraph)
+library(viridis)
+library(magick)
 source("graph_utils.R")
 source("experiments/evaluate_solution.R")
 source("experiments/simulate_epidemic.R")
@@ -22,24 +25,16 @@ if (p_norm != "inf"){
 }
 do_plot <- FALSE
 
-
+lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
 res <- c()
 for (exp in 1:100){
     # Create random graph
   g <- sample_gnm(n, m = rbinom(1, prob=proba_er, size=n^2-n), directed = FALSE)
   if (do_plot) {
-    layout <- layout_with_fr(g)
+    layout <- layout.mds(g)#layout_with_fr(g)
     plot(g, layout = layout, vertex.size = 4,
         edge.arrow.size = 0, vertex.label = NA)
   }
-
-
-  #neighbors <- as.numeric(neighborhood(g, nodes = c(subject_0), mindist=1)[[1]])
-  #neighbors2 <- as.numeric(neighborhood(g, order=2, nodes = c(subject_0), mindist=2)[[1]])
-  #print(neighbors)
-  #edges_lst = which(graph_attributes$Gamma[, subject_0]!=0)
-  #graph_attributes$Gamma[edges_lst, which(graph_attributes$Gamma[edges_lst, ]!=0, arr.ind=TRUE)[,2]]
-  # Simulate one step of epidemic propagation
 
   ### Turn the infection rates into a vector
   if (is.null(heterogeneity_rates) || heterogeneity_rates == "none") {
@@ -71,10 +66,50 @@ for (exp in 1:100){
                              y_init = y_init,
                              beta_v = beta_v,
                              gamma_v = gamma_v,
-                             steps = steps)
+                             steps = 1, ## for now
+                             propagate = "true_p")
+  
+  if (do_plot) {
+    k= 100
+    #color_palette = colorRampPalette(c("black", "red"))(n/k)
+    color_palette <- viridis(k, option = "C")
+    for (t in 1:ncol(state$track_state)){
+      sizes = sapply(state$track_state[,t], function(x){ifelse(x < 1e-5, 0.5, 1)})
+      V(g)$size <- sizes
+      V(g)$color <- color_palette[cut(sapply(state$track_state[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20,
+                                      breaks = length(color_palette), 
+                                      include.lowest = TRUE)]
+      #V(g)$color <- cut(sapply(state$track_state[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20,
+      #                                breaks = length(color_palette), 
+      #                                include.lowest = TRUE)
+      #V(g)$color <- sapply(state$true_p, function(x){color_palette[which.min( abs(x * (n/k) - (1:(n/k))))]})
+      V(g)$color = sapply(state$track_state[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20
+      #V(g)$color = state$track_state[,t] 
+      #layout <- layout_with_fr(g)
+      plot <- ggraph(g, layout = layout) +
+        geom_node_point(aes(colour = color), size=2) +        # Add nodes as points
+        geom_edge_link(edge_alpha=0.15) +         # Add edges as links
+        #scale_colour_brewer(palette = "PuBuGn", direction = -1) + 
+        scale_colour_gradient(low = "red", high = "blue", limits = c(0,1))+ 
+        guides(color = "none")+
+        theme_bw()               # Remove axis labels and gridlines
+      print(plot)
+      ggsave(paste0("plot-er-graph-proba-",proba_er, "-", t,  ".png"), plot = plot, width = 9, height = 9)
+      # Load an image
+      image <- image_read(paste0("plot-er-graph-proba-",proba_er, "-", t,  ".png"))
+      # Resize it to even dimensions
+      image_resized <- image_resize(image, "2832x2832")
+      image_write(image_resized, paste0("resized-plot-er-graph-proba-",proba_er, "-", t,  ".png"))
+      
+      Sys.sleep(1)
+    }
+    
+  }
   
   #graph_attributes$W[subject_0, neighbors]
-  for (lambda in 10^(seq(from = -5, to = -1, length.out = 30)) {
+  store_solutions = matrix(0, nrow=n, ncol=length(lambdas))
+  lambda.it = 1
+  for (lambda in lambdas) {
     
     p_hat <- tryCatch(
         cvx_solver(y_init,
@@ -87,9 +122,12 @@ for (exp in 1:100){
           return(NULL)
         }
       )
+    
     if (is.null(p_hat) == FALSE) {
       p_hat[which(p_hat <0)]=0
-      p_hat[which(abs(p_hat) <1e-7)]=0
+      p_hat[which(p_hat >1)]=1
+      store_solutions[, lambda.it] = p_hat
+      #p_hat[which(abs(p_hat) <1e-7)]=0
       
       res_temp <- evaluate_solution(state$y_observed,
                                     p_hat,
@@ -128,21 +166,68 @@ for (exp in 1:100){
       res_temp["p_norm"] <- p_norm
 
       # Propagate solution
-      prop_sol <- propagate_solution(graph_attributes$W, p_hat, state$beta_v, 
-                                    state$gamma_v, 20)
+      prop_sol <- propagate_solution(graph_attributes$W, p_hat, 
+                                     state$beta_v, state$gamma_v, steps)
       # Propagate real data
-      prop_truth <- propagate_solution(graph_attributes$W, y_init, 
-                                      state$beta_v, state$gamma_v, 20)
+      prop_truth <- propagate_solution(graph_attributes$W, state$true_p, 
+                                      state$beta_v, state$gamma_v, steps)
       # Compare the two
-      for (it in 1:20){
-        res_temp[ paste0("l1_propagated_error_", it)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
-        res_temp[ paste0("l2_propagated_error_", it)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
+      res_temp[ paste0("l1_error_", 1)] = mean(abs(p_hat - state$true_p))
+      res_temp[ paste0("l2_error_", 1)] = mean((p_hat - state$true_p)^2)
+      for (it in 1:steps){
+        res_temp[ paste0("l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
+        res_temp[ paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
       }
 
       # add to list of res
+      #ggplot(res_temp%>%
+      #  select(starts_with("l1_error_"))  %>%
+      #  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+      #  mutate(number = as.integer(gsub("^l1_error_", "", variable)))) +
+      #  geom_line(aes(x=number, y=value))
       res <- rbind(res, res_temp)
       write_csv(x = res, file=paste0("experiments/results/er_graph/", result_file))
-
     }
+    lambda.it = lambda.it + 1
   }
+  
+  if (do_plot) {
+    k= 100
+    library(viridis)
+    library(magick)
+    #color_palette = colorRampPalette(c("black", "red"))(n/k)
+    color_palette <- viridis(k, option = "C")
+    for (t in 1:length(lambdas)){
+      #sizes = sapply(store_solutions[,t], function(x){ifelse(x < 1e-5, 0.5, 1)})
+      #V(g)$size <- sizes
+      V(g)$color <- color_palette[cut(sapply(store_solutions[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20,
+                                      breaks = length(color_palette), 
+                                      include.lowest = TRUE)]
+      #V(g)$color <- cut(sapply(state$track_state[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20,
+      #                                breaks = length(color_palette), 
+      #                                include.lowest = TRUE)
+      #V(g)$color <- sapply(state$true_p, function(x){color_palette[which.min( abs(x * (n/k) - (1:(n/k))))]})
+      V(g)$color = sapply(store_solutions[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20
+      #layout <- layout_with_fr(g)
+      plot <- ggraph(g, layout = layout) +
+        geom_node_point(aes(colour = color), size=2) +        # Add nodes as points
+        geom_edge_link() +         # Add edges as links
+        #scale_colour_brewer(palette = "PuBuGn", direction = -1) + 
+        scale_colour_gradient(low = "red", high = "navy", limits = c(0,1))+
+        theme_bw()  + 
+        ggtitle(paste0("lambda = ", lambdas[t]))             # Remove axis labels and gridlines
+      print(plot)
+      title_plot = paste0("plot-er-graph", proba_er, "-solution" ,t,  ".png")
+      ggsave(title_plot, plot = plot, width = 9, height = 9)
+      # Load an image
+      image <- image_read(title_plot)
+      # Resize it to even dimensions
+      image_resized <- image_resize(image, "2832x2832")
+      image_write(image_resized, paste0("resized-", title_plot))
+      
+      Sys.sleep(1)
+    }
+    
+  }
+  
 }

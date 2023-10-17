@@ -23,8 +23,8 @@ get_edge_incidence <- function(g, beta_v,
   edges["weights"]= weights
   # Make beta_v into a matrix
   for (e in 1:nrow(edges)){
-    W[edges$X1[e], edges$X2[e]] = edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
-    W[edges$X2[e], edges$X1[e]] = edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
+    W[edges$X1[e], edges$X2[e]] = edges$weights[e] #* (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
+    W[edges$X2[e], edges$X1[e]] = edges$weights[e] #* (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
     Gamma[e,edges$X1[e]] = edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
     Gamma[e,edges$X2[e]] = - edges$weights[e] * (beta_v[edges$X2[e]] + beta_v[edges$X1[e]])/2
   }

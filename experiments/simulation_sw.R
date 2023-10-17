@@ -1,6 +1,5 @@
 library(tidyverse)
 library(igraph)
-ste
 source("graph_utils.R")
 source("experiments/evaluate_solution.R")
 source("experiments/simulate_epidemic.R")
