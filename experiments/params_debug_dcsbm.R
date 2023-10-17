@@ -11,3 +11,5 @@ p_norm <- 1
 proba_between <- 0.1
 proba_within <- 0.01
 nb_blocks  <- 6
+nei=3
+p_sw = 0.1
