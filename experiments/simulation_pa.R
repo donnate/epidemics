@@ -25,7 +25,7 @@ do_plot <- FALSE #TRUE
 lambdas = 10^(seq(from = -5, to = -1, length.out = 30))
 
 res <- c()
-for (exp in 1:100){
+for (exp in 1:100) {
   # Create random graph
   g <- sample_pa(N, power = power_pa, directed = FALSE)
   n = vcount(g)
@@ -92,7 +92,7 @@ for (exp in 1:100){
       image <- image_read(title_plot)
       # Resize it to even dimensions
       image_resized <- image_resize(image, "2832x2832")
-      image_write(image_resized, paste0("resized", title_plot)
+      image_write(image_resized, paste0("resized", title_plot))
       Sys.sleep(1)
     }
     
