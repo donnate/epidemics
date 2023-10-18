@@ -1,8 +1,8 @@
 library(tidyverse)
 library(igraph)
-library(ggraph)
-library(viridis)
-library(magick)
+#library(ggraph)
+#library(viridis)
+#library(magick)
 source("graph_utils.R")
 source("experiments/evaluate_solution.R")
 source("experiments/simulate_epidemic.R")
@@ -27,7 +27,7 @@ if (p_norm != "inf"){
 }
 do_plot <- FALSE
 
-lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
+lambdas <- 10^(seq(from = -7, to = -1, length.out = 50))
 res <- c()
 for (exp in 1:100){
     # Create random graph
