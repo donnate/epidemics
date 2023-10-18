@@ -22,6 +22,7 @@ p_norm <- args[10]
 proba_between <- (as.numeric(args[11]))
 proba_within <- (as.numeric(args[12]))
 nb_blocks  <- ceiling(as.numeric(args[13]))
+diffuse <- ceiling(as.numeric(args[15]))
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
@@ -30,6 +31,8 @@ do_plot <- FALSE
 #nb_blocks <-  6
 #proba_between <- 0.01
 #proba_within <- 0.1
+proba_between <- 0.001
+proba_within <- 0.01
 B <-  matrix(proba_between, nb_blocks, nb_blocks)
 diag(B) <- rep(proba_within, nb_blocks)
 
@@ -40,6 +43,8 @@ if (dc_heterogeneity == "none"){
   dc_vector = rexp(1/as.numeric(dc_heterogeneity), n=N)
 }
 
+lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
+
 
 res <- c()
 for (exp in 1:100){
@@ -49,11 +54,14 @@ for (exp in 1:100){
     theta = dc_vector,
     B = B,
     sort_nodes = TRUE,
-    allow_self_loops = FALSE
+    allow_self_loops = FALSE,
+    poisson_edges = FALSE
   )
 
   edgelist <- sample_edgelist(dcsbm_graph)
   g <- igraph::graph_from_edgelist(as.matrix(edgelist), directed=FALSE)
+  #V(g)$z = dcsbm_graph$z
+  g = subgraph(g, vids = (1:vcount(g))[components(g)$membership == 1])
   n <- vcount(g)
 
   if (do_plot) {
@@ -95,17 +103,46 @@ for (exp in 1:100){
       gamma_v <- rexp(1 / gamma_epid, n = n)
     }
   }
-  graph_attributes <- get_edge_incidence(g, beta_v, graph = "DCSBM", weight=1)
+  graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
 
 
+  
   state <- simulate_epidemic(graph_attributes$W,
                              y_init = y_init,
                              beta_v = beta_v,
                              gamma_v = gamma_v,
-                             steps = steps)
+                             steps = diffuse)
+  
+  if (do_plot) {
+    library(viridis)
+    library(magick)
+    library(ggraph)
+    k= 100
+    color_palette <- viridis(k, option = "C")
+    for (t in 1:ncol(state$track_state)){
+      sizes = sapply(state$track_state[,t], function(x){ifelse(x < 1e-5, 0.5, 1)})
+      V(g)$size <- sizes
+      V(g)$color = sapply(state$track_state[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20
+      plot <- ggraph(g, layout = layout) +
+        geom_node_point(aes(colour = color), size=2) +        # Add nodes as points
+        geom_edge_link(edge_alpha = 0.15) +         # Add edges as links
+        scale_colour_gradient(low = "red", high = "navy", limits = c(0,1))+
+        theme_bw()               # Remove axis labels and gridlines
+      title_plot = paste0("plot-dcsbm-graph-heterogeneity", dc_heterogeneity, "-t-",t,  ".png")
+      print(plot)
+      ggsave(title_plot, plot = plot, width = 9, height = 9)
+      # Load an image
+      image <- image_read(title_plot)
+      # Resize it to even dimensions
+      image_resized <- image_resize(image, "2832x2832")
+      image_write(image_resized, paste0("resized", title_plot))
+      Sys.sleep(1)
+    }
+    
+  }
   
   #graph_attributes$W[subject_0, neighbors]
-  for (lambda in 10^(seq(from = -5, to = -1, length.out = 30))) {
+  for (lambda in lambdas) {
     print(c(lambda, p_norm))
     p_hat <- tryCatch(
         cvx_solver(y_init,
@@ -120,7 +157,8 @@ for (exp in 1:100){
       )
     if (is.null(p_hat) == FALSE) {
       p_hat[which(p_hat <0)]=0
-      p_hat[which(abs(p_hat) <1e-7)]=0
+      p_hat[which(p_hat >1)]=1
+     # p_hat[which(abs(p_hat) <1e-7)]=0
       
       res_temp <- evaluate_solution(state$y_observed,
                                     p_hat,
@@ -157,18 +195,20 @@ for (exp in 1:100){
       res_temp["p_between"] <- proba_between
       res_temp["p_within"] <- proba_within
       res_temp["steps"] <- steps
+      res_temp["diffuse"] <- diffuse
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
 
       # Propagate solution
-      prop_sol <- propagate_solution(graph_attributes$W, p_hat, state$beta_v, 
-                                    state$gamma_v, 20)
+      prop_sol <- propagate_solution(graph_attributes$W, p_hat, 
+                                     state$beta_v, 
+                                     state$gamma_v, steps)
       # Propagate real data
-      prop_truth <- propagate_solution(graph_attributes$W, y_init, 
-                                      state$beta_v, state$gamma_v, 20)
+      prop_truth <- propagate_solution(graph_attributes$W, state$true_p, 
+                                      state$beta_v, state$gamma_v, steps)
       # Compare the two
-      for (it in 1:20){
+      for (it in 1:steps){
         res_temp[ paste0("l1_propagated_error_", it)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
         res_temp[ paste0("l2_propagated_error_", it)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
       }

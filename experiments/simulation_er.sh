@@ -21,7 +21,7 @@ module load R/4.2.0
 result_file="res_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "result file is ${result_file}"
 cd $SCRATCH/$USER/epidemic_modelling/
-Rscript experiments/simulation_er.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8
+Rscript experiments/simulation_er.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8 $9
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)
@@ -30,3 +30,4 @@ Rscript experiments/simulation_er.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $
 #$6: heterogeneity of the rates
 #$7: nb of steps for the epidemic
 #$8: norm for the penalty (inf or 1)
+#$9: diffuse
