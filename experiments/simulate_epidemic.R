@@ -22,8 +22,11 @@ simulate_epidemic <- function(W, y_init,
     }else{
       prop <- propagate_one_step(W, as.numeric(y), beta_v, gamma_v)
     }
-    y <- prop$y # realization of a random event
     true_p <- prop$true_p
+    y <- prop$y # realization of a random event
+    while(sum(y)  == 0){ ## resample to make sure someone is infectious
+      y <- sapply(true_p, function(x) { rbinom(1, 1, true_p) })
+    }
     track_state[, 1 + step] <- true_p
   }
   return(list(true_p = true_p,
@@ -42,8 +45,9 @@ propagate_one_step <- function(W, y,
   n_nodes <- ncol(W)
   D <- diag(nrow=n_nodes)- diag(gamma_v) + diag(1 - y) %*% diag(beta_v) %*% as.matrix(W)  
   true_p <- D %*% y
+  true_p <- sapply(true_p, function(x) { max(min(x, 1), 0) })
   ### if y = 1, the first part equals to 1-gamma_v, the second is 0
   ### if y = 0, the first part equals to 0, the second is beta_v * sum_j  W_{ij} * y_j
-  y <- sapply(true_p, function(x) { rbinom(1, 1, max(min(x, 1), 0)) })
+  y <- sapply(true_p, function(x) { rbinom(1, 1, true_p) })
   return(list(true_p = true_p, y = y))
 }
