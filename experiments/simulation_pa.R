@@ -18,19 +18,20 @@ heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 p_norm <- args[10]
 diffuse <- ceiling(as.numeric(args[11]))
+mode <- args[12]
 
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
 do_plot <- FALSE #TRUE
 
-lambdas = 10^(seq(from = -5, to = -1, length.out = 30))
+lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
 
 res <- c()
 for (exp in 1:100) {
   # Create random graph
   g <- sample_pa(N, power = power_pa, directed = FALSE)
-  n = vcount(g)
+  n <- vcount(g)
   if (do_plot) {
     layout <- layout_with_fr(g)
     plot(g, layout = layout, vertex.size = 4,
@@ -50,40 +51,37 @@ for (exp in 1:100) {
       gamma_v <- rexp(1 / gamma_epid, n = n)
     }
   }
-  
-  graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
+  graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA",
+                                         weight=1)
   # Assign initial patients
   y_init <- rep(0, n)
   subject_0 <- sample(1:n, nb_init)
   y_init[subject_0] <- 1
-  
   # Record statistics on the initial patients
   d <- degree(g, v = subject_0,
               mode = "total", loops = TRUE,
               normalized = FALSE)
   btw <- betweenness(g, v = subject_0)
   cls <- closeness(g, v = subject_0)
-
-
   state <- simulate_epidemic(graph_attributes$W,
                              y_init = y_init,
                              beta_v = beta_v,
                              gamma_v = gamma_v,
                              steps = diffuse, ### Only 1 step for now
                              propagate = "true_p")
-  
   if (do_plot) {
     library(viridis)
     library(magick)
     library(ggraph)
-    k= 100
+    k <- 100
     color_palette <- viridis(k, option = "C")
     for (t in 1:ncol(state$track_state)){
-      sizes = sapply(state$track_state[,t], function(x){ifelse(x < 1e-5, 0.5, 1)})
-      V(g)$size <- sizes
-      V(g)$color = sapply(state$track_state[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20
+      V(g)$color <- sapply(state$track_state[, t],
+                           function(x) {
+                             ifelse(x > 0, min(log(1 / x), 20), 20)
+                           }) / 20
       plot <- ggraph(g, layout = layout) +
-        geom_node_point(aes(colour = color), size=2) +        # Add nodes as points
+        geom_node_point(aes(colour = color), size=2) + 
         geom_edge_link() +         # Add edges as links
         scale_colour_gradient(low = "red", high = "navy", limits = c(0,1))+
         theme_bw()               # Remove axis labels and gridlines
@@ -97,39 +95,35 @@ for (exp in 1:100) {
       image_write(image_resized, paste0("resized", title_plot))
       Sys.sleep(1)
     }
-    
   }
-  
-  #graph_attributes$W[subject_0, neighbors]
-  store_solutions = matrix(0, nrow=n, ncol=length(lambdas))
-  lambda.it = 1
+  store_solutions <- matrix(0, nrow = n, ncol = length(lambdas))
+  lambda.it <- 1
   for (lambda in lambdas) {
-    
-     p_hat <- tryCatch(
-        cvx_solver(y_init,
-                   graph_attributes$Gamma,
-                   lambda, p_norm=p_norm),
-        error = function(err) {
+    if (mode == "predict") {
+      y.prob <- y_init
+    } else {
+      y.prob <- state$y_observed
+    }
+    p_hat <- tryCatch(
+      cvx_solver(y.prob,
+                 graph_attributes$Gamma,
+                 lambda, p_norm = p_norm),
+      error = function(err) {
           # Code to handle the error (e.g., print an error message, log the error, etc.)
           cat("Error occurred while running CVXR:", conditionMessage(err), "\n")
           # Return a default value or NULL to continue with the rest of the code
           return(NULL)
         }
       )
-     store_solutions[, lambda.it] = p_hat
-
-       
     if (is.null(p_hat) == FALSE) {
-      p_hat[which(p_hat <0)]=0
-      p_hat[which(p_hat >1)]=1
-      #p_hat[which(abs(p_hat) < 1e-7)] = 0
-      
+      p_hat[which(p_hat < 0)] <- 0
+      p_hat[which(p_hat > 1)] <- 1
+      store_solutions[, lambda.it] <- p_hat
       res_temp <- evaluate_solution(state$y_observed,
                                     p_hat,
                                     state$true_p,
                                     graph_attributes$Gamma)
       res_temp["lambda"] <- lambda
-
       # add the init statistics
       res_temp["average_degree"] <- mean(d)
       res_temp["median_degree"] <- median(d)
@@ -149,7 +143,6 @@ for (exp in 1:100) {
       res_temp["q75_cls"] <- quantile(cls, 0.75)
       res_temp["min_cls"] <- min(cls)
       res_temp["max_cls"] <- max(cls)
-      
       res_temp["exp"] <- exp
       res_temp["beta_epid"] <- beta_epid
       res_temp["gamma_epid"] <- gamma_epid
@@ -157,32 +150,30 @@ for (exp in 1:100) {
       res_temp["power_pa"] <- power_pa
       res_temp["steps"] <- steps
       res_temp["diffuse"] <- diffuse
+      res_temp["mode"] <- mode
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
 
       # Propagate solution
-      prop_sol <- propagate_solution(graph_attributes$W, p_hat, 
-                                     state$beta_v,state$gamma_v, steps)
+      prop_sol <- propagate_solution(graph_attributes$W, p_hat,
+                                     state$beta_v,
+                                     state$gamma_v, steps)
       # Propagate real data
-      prop_truth <- propagate_solution(graph_attributes$W, state$true_p, 
-                                      state$beta_v, state$gamma_v, steps)
+      prop_truth <- propagate_solution(graph_attributes$W, state$true_p,
+                                       state$beta_v, state$gamma_v, steps)
       # Compare the two
-      res_temp[ paste0("l1_error_", 1)] = mean(abs(p_hat - state$true_p))
-      res_temp[ paste0("l2_error_", 1)] = mean((p_hat - state$true_p)^2)
+      res_temp[paste0("l1_error_", 1)] <- mean(abs(p_hat - state$true_p))
+      res_temp[paste0("l2_error_", 1)] <- mean((p_hat - state$true_p)^2)
       for (it in 1:steps){
-        res_temp[ paste0("l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
-        res_temp[ paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
+        res_temp[paste0("l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
+        res_temp[paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
       }
-
       # add to list of res
       res <- rbind(res, res_temp)
       write_csv(x = res, file=paste0("experiments/results/pa_graph/", result_file))
      }
-     lambda.it = lambda.it + 1
-     ## res %>% rename(l1_error_at_step_1 = l1_error)
-  
-
+     lambda.it <- lambda.it + 1
   }
   
   if (do_plot) {
@@ -192,7 +183,6 @@ for (exp in 1:100) {
              pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
              mutate(number = as.integer(gsub("^l1_error_", "", variable)))) +
       geom_line(aes(x=number, y=value, colour = as.factor(lambda))) +theme_bw()
-    
     ggplot(res%>%
              select(starts_with("l1_error_"), lambda)  %>%
              pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
@@ -203,13 +193,11 @@ for (exp in 1:100) {
       scale_x_log10() + 
       geom_point()  + 
       geom_line() +theme_bw()
-    
     ggplot(res %>% filter(lambda<0.01),
            aes(x=lambda, y=l1_error)) +
       scale_y_log10() +
       scale_x_log10() + 
       geom_line() +theme_bw() +geom_point()
-    
     i.d = which.min(res$l1_error_1)
     ggplot(res[c(1, 2, 4, i.d, 10, 20),] %>%
              rename(l1_error_at_step_0 = l1_error) %>%
