@@ -51,6 +51,9 @@ propagate_one_step <- function(W, y,
   true_p <- sapply(true_p, function(x) { max(min(x, 1), 0) })
   ### if y = 1, the first part equals to 1-gamma_v, the second is 0
   ### if y = 0, the first part equals to 0, the second is beta_v * sum_j  W_{ij} * y_j
-  y <- sapply(true_p, function(x) { rbinom(1, 1, true_p) })
+  y <- sapply(true_p, function(x) { rbinom(1, 1, x) })
+  print(sum(y))
+  print(which(y>0))
+  
   return(list(true_p = true_p, y = y))
 }

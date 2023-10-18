@@ -19,3 +19,9 @@ nb_blocks <-  6
 proba_between <- 0.01
 proba_within <- 0.1
 dc_heterogeneity = 1
+diffuse = 10
+steps = 30
+
+
+
+

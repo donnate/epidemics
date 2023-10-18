@@ -68,7 +68,7 @@ for (exp in 1:100) {
                              beta_v = beta_v,
                              gamma_v = gamma_v,
                              steps = diffuse, ### Only 1 step for now
-                             propagate = "true_p")
+                             propagate = "y") ### propagate true_p is a little difficult
   if (do_plot) {
     library(viridis)
     library(magick)
@@ -100,12 +100,12 @@ for (exp in 1:100) {
   lambda.it <- 1
   for (lambda in lambdas) {
     if (mode == "predict") {
-      y.prob <- y_init
+      y_prob <- y_init
     } else {
-      y.prob <- state$y_observed
+      y_prob <- state$y_observed
     }
     p_hat <- tryCatch(
-      cvx_solver(y.prob,
+      cvx_solver(y_prob,
                  graph_attributes$Gamma,
                  lambda, p_norm = p_norm),
       error = function(err) {

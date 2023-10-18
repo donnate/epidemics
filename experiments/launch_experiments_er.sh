@@ -9,7 +9,8 @@ beta_values="0.9 0.8 0.5 0.1 0.05"
 for proba in $proba_values; do
   for diffuse in $diffuse_values; do
     for beta in $beta_values; do
-      sbatch experiments/simulation_er.sh 1000 "$beta" 0.1 "$proba" 1 none 10 1 "$diffuse" denoise
-    done
+   #   sbatch experiments/simulation_er.sh 1000 "$beta" 0.1 "$proba" 1 none 10 1 "$diffuse" denoise
+  echo "sbatch experiments/simulation_pa.sh 1000 0.1 $beta $power none 30 1 $diffuse denoise" 
+ done
   done
 done
