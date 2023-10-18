@@ -2,7 +2,7 @@ library(tidyverse)
 setwd("~/Documents/epidemic_modelling/experiments/results/pa_graph/")
 theme_set(theme_bw(base_size = 14))
 folder_path <- "~/Documents/epidemic_modelling/experiments/results/pa_graph"
-file_list <- list.files(folder_path, pattern = "^res_978", full.names = TRUE)
+file_list <- list.files(folder_path, pattern = "^res_979", full.names = TRUE)
 #file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
 # Read all the files into a single data frame using map_dfr.
 data <- map_dfr(file_list, read_csv)
@@ -23,10 +23,17 @@ res  = data %>%
 res2  = data %>%
   group_by(lambda, beta_epid, gamma_epid, 
            n, power_pa, steps, heterogeneity_rates, nb_init, p_norm) %>%
-  summarise(counts = n()) %>%
+  summarise(across(everything(), ~quantile(.x, probs = 0.25), .names = "q.25_{.col}")) %>%
+  ungroup()
+res3  = data %>%
+  group_by(lambda, beta_epid, gamma_epid, 
+           n, power_pa, steps, heterogeneity_rates, nb_init, p_norm) %>%
+  summarise(across(everything(), ~quantile(.x, probs = 0.75), .names = "q.75_{.col}")) %>%
   ungroup()
 
 res = merge(res, res2, by = c("lambda", "beta_epid", "gamma_epid", 
+                              "n","power_pa", "steps", "heterogeneity_rates", "nb_init", "p_norm"))
+res = merge(res, res3, by = c("lambda", "beta_epid", "gamma_epid", 
                               "n","power_pa", "steps", "heterogeneity_rates", "nb_init", "p_norm"))
 
 res_all = res 
@@ -41,22 +48,27 @@ unique(res_all$p_norm)
 unique(res_all$steps)
 colnames(res_all)
 
-ggplot(res_all %>% filter(power_pa==2,
+ggplot(res %>% filter(#power_pa == 1.2,
                           #gamma_epid == 0.1,
                           p_norm == 1,
-                          steps == 1,
+                          lambda < 1e-2,
                           nb_init == 1),
-       aes(x=lambda, l1_propagated_error_15))+
+       aes(x=lambda, l1_error))+
   geom_line(linewidth=1.2)+
+  geom_point()+
+  geom_errorbar(aes(ymin=q.25_l1_error, ymax=q.75_l1_error))+
   scale_x_log10()+
   scale_y_log10() +
-  geom_hline(aes(yintercept=oracle, colour = "oracle"),
-             linewidth=1.2) + 
-  facet_grid(beta_epid/gamma_epid~., labeller = as_labeller(c(`0.1` = "R0 = 0.1",
-                                                              `1` = "R0 = 1",
-                                                              `5` = "R0 = 5",
-                                                              `6` = "R0 = 6",
-                                                              `9` = "R0 = 9")))+
+  #geom_hline(aes(yintercept=oracle, colour = "oracle"),
+  #               linewidth=1.) + 
+  facet_grid(beta_epid/gamma_epid~power_pa,
+             labeller = as_labeller(c(`0.2` = "power_PA = 0.2",
+                                      `1.2` = "power_PA = 1.2",
+                                      `3` = "power_PA = 3.0",
+                                      `0.5` = "R0 = 0.5",
+                                      `1` = "R0 = 1",
+                                      `8`= "R0 = 8",
+                                      `9`= "R0 = 9")))+
   xlab("lambda (Regularization Strength)") + 
   ylab(expression(italic(l[1]) ~ "error")) +
   labs(colour="Comparison") + 

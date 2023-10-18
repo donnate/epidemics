@@ -21,6 +21,7 @@ heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 p_norm <- args[10]
 diffuse <-  ceiling(as.numeric(args[11]))
+mode <- args[12]
 
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
@@ -106,11 +107,17 @@ for (exp in 1:100){
   store_solutions = matrix(0, nrow=n, ncol=length(lambdas))
   lambda.it = 1
   for (lambda in lambdas) {
+    if (mode == "predict") {
+      y.prob <- y_init
+    } else {
+      y.prob <- state$y_observed
+    }
+
     p_hat <- tryCatch(
-      cvx_solver(y_init,
+      cvx_solver(y.prob,
                 graph_attributes$Gamma,
                 lambda, p_norm=p_norm),
-        error = function(err) {
+      error = function(err) {
           # Code to handle the error (e.g., print an error message, log the error, etc.)
           cat("Error occurred while running CVXR:", conditionMessage(err), "\n")
           # Return a default value or NULL to continue with the rest of the code
@@ -153,6 +160,7 @@ for (exp in 1:100){
       res_temp["proba_er"] <- proba_er
       res_temp["steps"] <- steps
       res_temp["diffuse"] <- diffuse
+      res_temp["mode"] <- mode
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
