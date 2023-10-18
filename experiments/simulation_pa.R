@@ -17,6 +17,8 @@ power_pa <- as.numeric(args[7]) # parameter of the PA graph
 heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 p_norm <- args[10]
+diffuse <- ceiling(as.numeric(args[11]))
+
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
@@ -67,7 +69,7 @@ for (exp in 1:100) {
                              y_init = y_init,
                              beta_v = beta_v,
                              gamma_v = gamma_v,
-                             steps = 1, ### Only 1 step for now
+                             steps = diffuse, ### Only 1 step for now
                              propagate = "true_p")
   
   if (do_plot) {
@@ -154,6 +156,7 @@ for (exp in 1:100) {
       res_temp["n"] <- vcount(g)
       res_temp["power_pa"] <- power_pa
       res_temp["steps"] <- steps
+      res_temp["diffuse"] <- diffuse
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
@@ -177,11 +180,46 @@ for (exp in 1:100) {
       write_csv(x = res, file=paste0("experiments/results/pa_graph/", result_file))
      }
      lambda.it = lambda.it + 1
-
+     ## res %>% rename(l1_error_at_step_1 = l1_error)
+  
 
   }
   
   if (do_plot) {
+    ggplot(res%>%
+             select(starts_with("l1_error_"), lambda)  %>%
+             filter(lambda<1e-3) %>%
+             pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
+             mutate(number = as.integer(gsub("^l1_error_", "", variable)))) +
+      geom_line(aes(x=number, y=value, colour = as.factor(lambda))) +theme_bw()
+    
+    ggplot(res%>%
+             select(starts_with("l1_error_"), lambda)  %>%
+             pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
+             mutate(number = as.integer(gsub("^l1_error_", "", variable))) %>%
+             filter(number==10, lambda<1e-2),
+           aes(x=lambda, y=value)) +
+      scale_y_log10() +
+      scale_x_log10() + 
+      geom_point()  + 
+      geom_line() +theme_bw()
+    
+    ggplot(res %>% filter(lambda<0.01),
+           aes(x=lambda, y=l1_error)) +
+      scale_y_log10() +
+      scale_x_log10() + 
+      geom_line() +theme_bw() +geom_point()
+    
+    i.d = which.min(res$l1_error_1)
+    ggplot(res[c(1, 2, 4, i.d, 10, 20),] %>%
+             rename(l1_error_at_step_0 = l1_error) %>%
+             select(starts_with("l1_error_"), lambda)  %>%
+             pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
+             mutate(number = as.integer(gsub("^l1_error_", "", variable)))) +
+      scale_y_log10() +
+      scale_x_log10() + 
+      geom_line(aes(x=number, y=value, colour=as.factor(lambda))) +theme_bw()
+    
     k= 100
     library(viridis)
     library(magick)
@@ -214,7 +252,6 @@ for (exp in 1:100) {
       # Resize it to even dimensions
       image_resized <- image_resize(image, "2832x2832")
       image_write(image_resized, paste0("resized-", title_plot))
-      
       Sys.sleep(1)
     }
     
