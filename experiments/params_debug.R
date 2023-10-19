@@ -15,9 +15,9 @@ if (p_norm != "inf"){
 do_plot <- TRUE
 p_sw = 0.1
 nei = 3
-nb_blocks <-  6
-proba_between <- 0.01
-proba_within <- 0.1
+nb_blocks <-  3
+proba_between <- 0.001
+proba_within <- 0.01
 dc_heterogeneity = 1
 diffuse = 100
 steps = 30
