@@ -97,7 +97,7 @@ for (exp in 1:200) {
     if (is.null(p_hat) == FALSE) {
       p_hat[which(p_hat < 0)] <- 0
       p_hat[which(p_hat > 1)] <- 1
-      store_solutions[, lambda.it] <- p_hat
+      store_solutions[, lambda_it] <- p_hat
       res_temp <- evaluate_solution(state$y_observed,
                                     p_hat,
                                     state$true_p,
