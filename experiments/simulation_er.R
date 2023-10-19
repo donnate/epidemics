@@ -28,7 +28,7 @@ lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
 res <- c()
 for (exp in 1:200) {
   # Create random graph
-  g <- sample_gnm(N, m = rbinom(1, prob=proba_er, size=N^2-N), directed = FALSE)
+  g <- sample_gnp(N, p = proba_er, directed = FALSE)
   g = subgraph(g, vids = (1:vcount(g))[components(g)$membership == 1])
   n <- vcount(g)
   if (do_plot) {
@@ -143,12 +143,20 @@ for (exp in 1:200) {
       # Propagate real data
       prop_truth <- propagate_solution(graph_attributes$W, state$true_p,
                                        state$beta_v, state$gamma_v, steps)
+
+      # Propagate benchmark
+      prop_benchmark <- propagate_solution(graph_attributes$W, state$y_observed,
+                                          state$beta_v, state$gamma_v, steps)
       # Compare the two
       res_temp[paste0("l1_error_", 1)] <- mean(abs(p_hat - state$true_p))
       res_temp[paste0("l2_error_", 1)] <- mean((p_hat - state$true_p)^2)
+      res_temp[paste0("benchmark_l1_error_", 1)] <- mean(abs(p_hat - state$y_observed))
+      res_temp[paste0("benchmark_l2_error_", 1)] <- mean((p_hat - state$y_observed)^2)
       for (it in 1:steps){
         res_temp[paste0("l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
         res_temp[paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
+        res_temp[paste0("benchmark_l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_benchmark[[it]]))
+        res_temp[paste0("benchmark_l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_benchmark[[it]])^2)
       }
       # add to list of res
       if (is.null(res)) {

@@ -55,8 +55,7 @@ colnames(res)
 colnames(res)
 ggplot(res %>% filter(#power_pa == 1.2,
                           #gamma_epid == 0.1,
-  mode == 
-                          diffuse==1,
+                          diffuse==50,
                           p_norm == 1,
                           lambda < 1e-2,
                           nb_init == 1),
@@ -81,6 +80,41 @@ ggplot(res %>% filter(#power_pa == 1.2,
   ylab(expression(italic(l[1]) ~ "error")) +
   labs(colour="Comparison") + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ggplot(res%>%
+         filter(diffuse==50,
+                p_norm == 1,
+                mode == "denoise",
+                lambda < 1e-2, 
+                lambda > 1e-3,
+                nb_init == 1) %>%
+         select(starts_with("l1_error_"), lambda, power_pa, gamma_epid, beta_epid)  %>%
+         pivot_longer(cols = -c("lambda", "power_pa", "gamma_epid", "beta_epid"), names_to = "variable", values_to = "value") %>%
+         mutate(time = as.integer(gsub("^l1_error_", "", variable)))) +
+  geom_line(aes(x=time, y=value, colour = as.factor(log(lambda)))) +theme_bw()+
+  facet_wrap(beta_epid/gamma_epid~power_pa,
+             scales = "free_y", ncol = 3,
+             labeller = as_labeller(c(`0.2` = "power_PA = 0.2",
+                                      `1.2` = "power_PA = 1.2",
+                                      `3` = "power_PA = 3.0",
+                                      `50` = "R0 = 50",
+                                      `10` = "R0 = 10",
+                                      `90` = "R0 = 90",
+                                      `5`= "R0 = 5")))+
+  labs(color = "Lambda")
+
+ggplot(res%>%
+         select(starts_with("l1_error_"), lambda)  %>%
+         pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
+         mutate(time = as.integer(gsub("^l1_error_", "", variable))) %>%
+         filter(time %in% c(1, 10, 15, 20, 30, 50, 100), lambda<1e-2),
+       aes(x=lambda, y=value)) +
+  scale_y_log10() +
+  scale_x_log10() + 
+  geom_point()  + 
+  geom_line() +theme_bw() +
+  facet_grid(~time)
 
 
 ggplot(data %>% filter(#gamma_epid == 0.1,

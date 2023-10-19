@@ -2,10 +2,10 @@
 #SBATCH --job-name=array
 #SBATCH --output=experiments/logs/array_er_%A_%a.out
 #SBATCH --error=experiments/logs/array_er_%A_%a.err
-#SBATCH --array=1-10
+#SBATCH --array=1-5
 #SBATCH --time=6:00:00
 #SBATCH --partition=caslake
-#SBATCH --ntasks=5
+#SBATCH --ntasks=3
 #SBATCH --mem=20G
 #SBATCH --account=pi-cdonnat
 
