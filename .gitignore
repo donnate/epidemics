@@ -9,4 +9,5 @@ experiments/logs/*
 .Rhistory
 experiments/.DS_Store
 .DS_Store
+.mp4
 

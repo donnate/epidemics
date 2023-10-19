@@ -2,7 +2,7 @@ library(tidyverse)
 setwd("~/Documents/epidemic_modelling/experiments/results/pa_graph/")
 theme_set(theme_bw(base_size = 14))
 folder_path <- "~/Documents/epidemic_modelling/experiments/results/pa_graph"
-file_list <- list.files(folder_path, pattern = "^res_979", full.names = TRUE)
+file_list <- list.files(folder_path, pattern = "^new", full.names = TRUE)
 #file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
 # Read all the files into a single data frame using map_dfr.
 data <- map_dfr(file_list, read_csv)
@@ -17,39 +17,46 @@ data <- map_dfr(file_list, read_csv)
 #### first group by experiment
 res  = data %>%
   group_by(lambda, beta_epid, gamma_epid, 
-           n, power_pa, steps, heterogeneity_rates, nb_init, p_norm) %>%
+           n, power_pa, steps, heterogeneity_rates, nb_init, p_norm, mode,
+           diffuse) %>%
   summarise_all(median) %>%
   ungroup()
 res2  = data %>%
   group_by(lambda, beta_epid, gamma_epid, 
-           n, power_pa, steps, heterogeneity_rates, nb_init, p_norm) %>%
+           n, power_pa, steps, heterogeneity_rates, nb_init, p_norm, mode,
+           diffuse) %>%
   summarise(across(everything(), ~quantile(.x, probs = 0.25), .names = "q.25_{.col}")) %>%
   ungroup()
 res3  = data %>%
   group_by(lambda, beta_epid, gamma_epid, 
-           n, power_pa, steps, heterogeneity_rates, nb_init, p_norm) %>%
+           n, power_pa, steps, heterogeneity_rates, nb_init, p_norm, mode,
+           diffuse) %>%
   summarise(across(everything(), ~quantile(.x, probs = 0.75), .names = "q.75_{.col}")) %>%
   ungroup()
 
 res = merge(res, res2, by = c("lambda", "beta_epid", "gamma_epid", 
-                              "n","power_pa", "steps", "heterogeneity_rates", "nb_init", "p_norm"))
+                              "n","power_pa", "steps", "heterogeneity_rates", "nb_init", "p_norm",
+                              "diffuse", "mode"))
 res = merge(res, res3, by = c("lambda", "beta_epid", "gamma_epid", 
-                              "n","power_pa", "steps", "heterogeneity_rates", "nb_init", "p_norm"))
+                              "n","power_pa", "steps", "heterogeneity_rates",
+                              "nb_init", "p_norm", "diffuse", "mode"))
+dim(res)
 
-res_all = res 
-dim(res_all)
-
-unique(res_all$lambda)
-unique(res_all$power_pa)
-unique(res_all$beta_epid)
+unique(res$lambda)
+unique(res$power_pa)
+unique(res$beta_epid)
 unique(res_all$gamma_epid)
-unique(res_all$nb_init)
-unique(res_all$p_norm)
-unique(res_all$steps)
-colnames(res_all)
-
+unique(res$nb_init)
+unique(res$p_norm)
+unique(res$steps)
+unique(res$mode)
+unique(res$diffuse)
+colnames(res)
+colnames(res)
 ggplot(res %>% filter(#power_pa == 1.2,
                           #gamma_epid == 0.1,
+  mode == 
+                          diffuse==1,
                           p_norm == 1,
                           lambda < 1e-2,
                           nb_init == 1),
@@ -61,14 +68,15 @@ ggplot(res %>% filter(#power_pa == 1.2,
   scale_y_log10() +
   #geom_hline(aes(yintercept=oracle, colour = "oracle"),
   #               linewidth=1.) + 
-  facet_grid(beta_epid/gamma_epid~power_pa,
+  facet_wrap(beta_epid/gamma_epid~power_pa,
+             scales = "free_y", ncol = 3,
              labeller = as_labeller(c(`0.2` = "power_PA = 0.2",
                                       `1.2` = "power_PA = 1.2",
                                       `3` = "power_PA = 3.0",
-                                      `0.5` = "R0 = 0.5",
-                                      `1` = "R0 = 1",
-                                      `8`= "R0 = 8",
-                                      `9`= "R0 = 9")))+
+                                      `50` = "R0 = 50",
+                                      `10` = "R0 = 10",
+                                      `90` = "R0 = 90",
+                                      `5`= "R0 = 5")))+
   xlab("lambda (Regularization Strength)") + 
   ylab(expression(italic(l[1]) ~ "error")) +
   labs(colour="Comparison") + 

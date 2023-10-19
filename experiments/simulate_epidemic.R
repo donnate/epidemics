@@ -14,21 +14,21 @@ simulate_epidemic <- function(W, y_init,
   #### Generate ground truth:
   y <- y_init
   true_p <- y_init
-  track_state = matrix(0, n_nodes, steps+1)
-  track_state[, 1] = y_init
-  for (step in 1:steps){
+  track_state <- matrix(0, n_nodes, steps + 1)
+  track_state[, 1] <- y_init
+  for (step in 1:steps) {
     if (propagate == "true_p") {
       prop <- propagate_one_step(W, as.numeric(true_p), beta_v, gamma_v)
-    }else{
+    }else {
       prop <- propagate_one_step(W, as.numeric(y), beta_v, gamma_v)
     }
     true_p <- prop$true_p
     y <- prop$y # realization of a random event
-    it.p <- 1
-    while((sum(y)  == 0) &  it.p <1000) { ## resample to make sure someone is infectious
-      #print(true_p)
+    it_p <- 1
+    while ((sum(y)  == 0) &&  it_p < 1000) {
+      ## resample to make sure someone is infectious
       y <- sapply(true_p, function(x) { rbinom(1, 1, x) })
-      it.p <- it.p + 1
+      it_p <- it_p + 1
     }
     track_state[, 1 + step] <- true_p
   }
@@ -54,6 +54,5 @@ propagate_one_step <- function(W, y,
   y <- sapply(true_p, function(x) { rbinom(1, 1, x) })
   print(sum(y))
   print(which(y>0))
-  
   return(list(true_p = true_p, y = y))
 }
