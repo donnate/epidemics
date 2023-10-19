@@ -66,7 +66,7 @@ for (exp in 1:200) {
                              beta_v = beta_v,
                              gamma_v = gamma_v,
                              steps = diffuse,
-                             propagate = propagate)
+                             propagate = propagation)
   if (do_plot) {
     source("plot_results.r")
     plot_results_on_graph(g, state$track_state, 1:ncol(state$track_state),
@@ -165,6 +165,6 @@ for (exp in 1:200) {
     plot_results_on_graph(g, state$store_solutions, lambdas,
                           "lambda = ",
                           paste0("solution-plot-pa-power", pa_power,
-                                 "-algo-", propagate))
+                                 "-algo-", propagation))
   }
 }
