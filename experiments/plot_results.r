@@ -12,7 +12,7 @@ plot_results_on_graph <- function(g, store_state, variable, variable_name,
                            }) / 5
     plot <- ggraph(g, layout = layout) +
               geom_node_point(aes(colour = color), size=2) + 
-              geom_edge_link() +         # Add edges as links
+              geom_edge_link(edge_alpha = 0.15) +         # Add edges as links
               labs(colour = "Probability") + 
               scale_colour_gradient(low = "navy", high = "red", limits = c(0,1))+
               theme_bw()  +             # Remove axis labels and gridlines

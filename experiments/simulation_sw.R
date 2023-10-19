@@ -16,24 +16,26 @@ nb_init <-  ceiling(as.numeric(args[6])) # Nb of initial patients
 p_sw <- as.numeric(args[7]) # parameter of the SW graph
 heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
-p_norm <- args[10]
-nei <- ceiling(as.numeric(args[11])) # parameter of the SW graph
-diffuse <- ceiling(as.numeric(args[12]))
+diffuse <- ceiling(as.numeric(args[10]))
+propagation <- args[11]
 
-if (p_norm != "inf"){
-  p_norm <- ceiling(as.numeric(p_norm))
-}
+p_norm <- 1
+mode <- "denoise"
 do_plot <- FALSE #TRUE
+nei <- 1
+
 lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
 
 res <- c()
-for (exp in 1:100){
+for (exp in 1:200) {
   # Create random graph
-  g <- sample_smallworld(dim=2, size=(ceiling(N^(1/2))), nei= nei, p = p_sw)
+  g <- sample_smallworld(dim = 2, size = (ceiling(N^(1/2))), nei = nei, p = p_sw)
+  n <- vcount(g)
   if (do_plot) {
     layout <- layout_with_fr(g)
     plot(g, layout = layout, vertex.size = 4,
-         edge.arrow.size = 0, vertex.label = NA)
+        edge.arrow.size = 0, vertex.label = NA,
+        vertex.color = V(g)$color)
   }
   ### Turn the infection rates into a vector
   if (is.null(heterogeneity_rates) || heterogeneity_rates == "none") {
@@ -48,52 +50,60 @@ for (exp in 1:100){
       gamma_v <- rexp(1 / gamma_epid, n = n)
     }
   }
-  graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA", weight=1)
-  #apply(graph_attributes$W,1, sum)
-  
+  graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA",
+                                         weight = 1)
   # Assign initial patients
   y_init <- rep(0, n)
   subject_0 <- sample(1:n, nb_init)
   y_init[subject_0] <- 1
-  
   # Record statistics on the initial patients
   d <- degree(g, v = subject_0,
               mode = "total", loops = TRUE,
               normalized = FALSE)
   btw <- betweenness(g, v = subject_0)
   cls <- closeness(g, v = subject_0)
-  
-  
   state <- simulate_epidemic(graph_attributes$W,
                              y_init = y_init,
                              beta_v = beta_v,
                              gamma_v = gamma_v,
-                             steps = diffuse)
-  
-  #graph_attributes$W[subject_0, neighbors]
+                             steps = diffuse,
+                             propagate = propagation)
+  if (do_plot) {
+    source("plot_results.r")
+    plot_results_on_graph(g, state$track_state, 1:ncol(state$track_state),
+                          "Time step",
+                          paste0("plot-sw-proba", p_sw, 
+                                 "-algo-", propagate))
+
+  }
+  store_solutions <- matrix(0, nrow = n, ncol = length(lambdas))
+  lambda_it <- 1
   for (lambda in lambdas) {
+    if (mode == "predict") {
+      y_prob <- y_init
+    } else {
+      y_prob <- state$y_observed
+    }
     p_hat <- tryCatch(
-      cvx_solver(y_init,
+      cvx_solver(y_prob,
                  graph_attributes$Gamma,
-                 lambda, p_norm=p_norm),
+                 lambda, p_norm = p_norm),
       error = function(err) {
-        # Code to handle the error (e.g., print an error message, log the error, etc.)
-        cat("Error occurred while running CVXR:", conditionMessage(err), "\n")
-        # Return a default value or NULL to continue with the rest of the code
-        return(NULL)
-      }
-    )
+          # Code to handle the error
+          cat("Error occurred while running CVXR:", conditionMessage(err), "\n")
+          # Return a default value or NULL to continue with the rest of the code
+          return(NULL)
+        }
+      )
     if (is.null(p_hat) == FALSE) {
-      p_hat[which(p_hat <0)]=0
-      p_hat[which(p_hat >1)]=1
-      #p_hat[which(abs(p_hat) < 1e-7)] = 0
-      
+      p_hat[which(p_hat < 0)] <- 0
+      p_hat[which(p_hat > 1)] <- 1
+      store_solutions[, lambda_it] <- p_hat
       res_temp <- evaluate_solution(state$y_observed,
                                     p_hat,
                                     state$true_p,
                                     graph_attributes$Gamma)
       res_temp["lambda"] <- lambda
-      
       # add the init statistics
       res_temp["average_degree"] <- mean(d)
       res_temp["median_degree"] <- median(d)
@@ -113,37 +123,57 @@ for (exp in 1:100){
       res_temp["q75_cls"] <- quantile(cls, 0.75)
       res_temp["min_cls"] <- min(cls)
       res_temp["max_cls"] <- max(cls)
-      
       res_temp["exp"] <- exp
       res_temp["beta_epid"] <- beta_epid
       res_temp["gamma_epid"] <- gamma_epid
       res_temp["n"] <- vcount(g)
       res_temp["p_sw"] <- p_sw
-      res_temp["nei"] <- nei
       res_temp["steps"] <- steps
       res_temp["diffuse"] <- diffuse
+      res_temp["propagation"] <- propagation
+      res_temp["mode"] <- mode
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
-      
+
       # Propagate solution
-      prop_sol <- propagate_solution(graph_attributes$W, p_hat, 
-                                     state$beta_v, 
+      prop_sol <- propagate_solution(graph_attributes$W, p_hat,
+                                     state$beta_v,
                                      state$gamma_v, steps)
       # Propagate real data
-      prop_truth <- propagate_solution(graph_attributes$W, state$true_p, 
-                                       state$beta_v, 
-                                       state$gamma_v, steps)
+      prop_truth <- propagate_solution(graph_attributes$W, state$true_p,
+                                       state$beta_v, state$gamma_v, steps)
+
+      # Propagate benchmark
+      prop_benchmark <- propagate_solution(graph_attributes$W, state$y_observed,
+                                          state$beta_v, state$gamma_v, steps)
       # Compare the two
+      res_temp[paste0("l1_error_", 1)] <- mean(abs(p_hat - state$true_p))
+      res_temp[paste0("l2_error_", 1)] <- mean((p_hat - state$true_p)^2)
+      res_temp[paste0("benchmark_l1_error_", 1)] <- mean(abs(p_hat - state$y_observed))
+      res_temp[paste0("benchmark_l2_error_", 1)] <- mean((p_hat - state$y_observed)^2)
       for (it in 1:steps){
-        res_temp[ paste0("l1_error_", it)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
-        res_temp[ paste0("l2_error_", it)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
+        res_temp[paste0("l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
+        res_temp[paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
+        res_temp[paste0("benchmark_l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_benchmark[[it]]))
+        res_temp[paste0("benchmark_l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_benchmark[[it]])^2)
       }
-      
       # add to list of res
-      res <- rbind(res, res_temp)
-      write_csv(x = res, file=paste0("experiments/results/sw_graph/", result_file))
-      
+      if (is.null(res)) {
+        res <- data.frame(res_temp)
+      } else {
+        res <- rbind(res, res_temp)
+      }
+      write_csv(x = res,
+                file = paste0("experiments/results/sw_graph/", result_file))
     }
+    lambda_it <- lambda_it + 1
+  }
+  if (do_plot) {
+    plot_results(res)
+    plot_results_on_graph(g, state$store_solutions, lambdas,
+                          "lambda = ",
+                          paste0("solution-plot-sw-p", p_sw,
+                                 "-algo-", propagation))
   }
 }
