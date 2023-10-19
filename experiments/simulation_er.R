@@ -157,7 +157,7 @@ for (exp in 1:200) {
         res <- rbind(res, res_temp)
       }
       write_csv(x = res,
-                file = paste0("experiments/results/pa_graph/", result_file))
+                file = paste0("experiments/results/er_graph/", result_file))
     }
     lambda_it <- lambda_it + 1
   }
