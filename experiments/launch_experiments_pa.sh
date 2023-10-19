@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Define the values for the variables
-power_values="0.2 1.2"
+power_values="0.2 1.2 3"
 diffuse_values="1 5 10 20"
-beta_values="0.9 0.8 0.5 0.1 0.05"
+beta_values="0.9 0.5 0.1 0.05 0.01"
 algorithms="y true_p"
 
 # Loop over the combinations and launch the sbatch command

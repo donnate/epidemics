@@ -6,8 +6,8 @@
 experiments/results/*
 experiments/logs/*
 .Rproj.user
-.Rhistory
+*.Rhistory
 experiments/.DS_Store
 .DS_Store
-.mp4
+*.mp4
 

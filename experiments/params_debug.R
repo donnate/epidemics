@@ -2,7 +2,7 @@ seed <-  1
 result_file <- "debug.csv"
 N <- 1000   # Number of nodes
 beta_epid <- 0.9 # Infection rate
-gamma_epid <-  0.1 # Recovery rate
+gamma_epid <-  0.01 # Recovery rate
 nb_init <-  1 # Nb of initial patients
 power_pa <- 1.2 # parameter of the PA graph
 proba_er <- 0.01
@@ -19,9 +19,9 @@ nb_blocks <-  6
 proba_between <- 0.01
 proba_within <- 0.1
 dc_heterogeneity = 1
-diffuse = 10
+diffuse = 100
 steps = 30
 
-
+propagation  = "y"
 
 
