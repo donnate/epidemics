@@ -16,19 +16,17 @@ nb_init <-  ceiling(as.numeric(args[6])) # Nb of initial patients
 power_pa <- as.numeric(args[7]) # parameter of the PA graph
 heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
-p_norm <- args[10]
-diffuse <- ceiling(as.numeric(args[11]))
-mode <- args[12]
+diffuse <- ceiling(as.numeric(args[10]))
+propagation <- args[11]
 
-if (p_norm != "inf"){
-  p_norm <- ceiling(as.numeric(p_norm))
-}
+p_norm <- 1
+mode <- "denoise"
 do_plot <- FALSE #TRUE
 
 lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
 
 res <- c()
-for (exp in 1:100) {
+for (exp in 1:200) {
   # Create random graph
   g <- sample_pa(N, power = power_pa, directed = FALSE)
   n <- vcount(g)
@@ -52,7 +50,7 @@ for (exp in 1:100) {
     }
   }
   graph_attributes <- get_edge_incidence(g, beta_v, graph = "PA",
-                                         weight=1)
+                                         weight = 1)
   # Assign initial patients
   y_init <- rep(0, n)
   subject_0 <- sample(1:n, nb_init)
@@ -67,49 +65,30 @@ for (exp in 1:100) {
                              y_init = y_init,
                              beta_v = beta_v,
                              gamma_v = gamma_v,
-                             steps = diffuse, ### Only 1 step for now
-                             propagate = "true_p")
+                             steps = diffuse,
+                             propagate = propagate)
   if (do_plot) {
-    library(viridis)
-    library(magick)
-    library(ggraph)
-    k <- 100
-    color_palette <- viridis(k, option = "C")
-    for (t in 1:ncol(state$track_state)){
-      V(g)$color <- sapply(state$track_state[, t],
-                           function(x) {
-                             ifelse(x > 0, min(log(1 / x), 20), 20)
-                           }) / 20
-      plot <- ggraph(g, layout = layout) +
-        geom_node_point(aes(colour = color), size=2) + 
-        geom_edge_link() +         # Add edges as links
-        scale_colour_gradient(low = "red", high = "navy", limits = c(0,1))+
-        theme_bw()               # Remove axis labels and gridlines
-      title_plot = paste0("plot-pa-graph-power", power_pa, "-t-",t,  ".png")
-      print(plot)
-      ggsave(title_plot, plot = plot, width = 9, height = 9)
-      # Load an image
-      image <- image_read(title_plot)
-      # Resize it to even dimensions
-      image_resized <- image_resize(image, "2832x2832")
-      image_write(image_resized, paste0("resized", title_plot))
-      Sys.sleep(1)
-    }
+    source("plot_results.r")
+    plot_results_on_graph(g, state$track_state, 1:ncol(state$track_state),
+                          "Time step",
+                          paste0("plot-pa-power", pa_power, 
+                                 "-algo-", propagate))
+
   }
   store_solutions <- matrix(0, nrow = n, ncol = length(lambdas))
-  lambda.it <- 1
+  lambda_it <- 1
   for (lambda in lambdas) {
     if (mode == "predict") {
-      y.prob <- y_init
+      y_prob <- y_init
     } else {
-      y.prob <- state$y_observed
+      y_prob <- state$y_observed
     }
     p_hat <- tryCatch(
-      cvx_solver(y.prob,
+      cvx_solver(y_prob,
                  graph_attributes$Gamma,
                  lambda, p_norm = p_norm),
       error = function(err) {
-          # Code to handle the error (e.g., print an error message, log the error, etc.)
+          # Code to handle the error
           cat("Error occurred while running CVXR:", conditionMessage(err), "\n")
           # Return a default value or NULL to continue with the rest of the code
           return(NULL)
@@ -150,6 +129,7 @@ for (exp in 1:100) {
       res_temp["power_pa"] <- power_pa
       res_temp["steps"] <- steps
       res_temp["diffuse"] <- diffuse
+      res_temp["propagation"] <- propagation
       res_temp["mode"] <- mode
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
@@ -170,78 +150,21 @@ for (exp in 1:100) {
         res_temp[paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
       }
       # add to list of res
-      res <- rbind(res, res_temp)
-      write_csv(x = res, file=paste0("experiments/results/pa_graph/", result_file))
-     }
-     lambda.it <- lambda.it + 1
-  }
-  
-  if (do_plot) {
-    ggplot(res%>%
-             select(starts_with("l1_error_"), lambda)  %>%
-             filter(lambda<1e-3) %>%
-             pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
-             mutate(number = as.integer(gsub("^l1_error_", "", variable)))) +
-      geom_line(aes(x=number, y=value, colour = as.factor(lambda))) +theme_bw()
-    ggplot(res%>%
-             select(starts_with("l1_error_"), lambda)  %>%
-             pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
-             mutate(number = as.integer(gsub("^l1_error_", "", variable))) %>%
-             filter(number==10, lambda<1e-2),
-           aes(x=lambda, y=value)) +
-      scale_y_log10() +
-      scale_x_log10() + 
-      geom_point()  + 
-      geom_line() +theme_bw()
-    ggplot(res %>% filter(lambda<0.01),
-           aes(x=lambda, y=l1_error)) +
-      scale_y_log10() +
-      scale_x_log10() + 
-      geom_line() +theme_bw() +geom_point()
-    i.d = which.min(res$l1_error_1)
-    ggplot(res[c(1, 2, 4, i.d, 10, 20),] %>%
-             rename(l1_error_at_step_0 = l1_error) %>%
-             select(starts_with("l1_error_"), lambda)  %>%
-             pivot_longer(cols = -c("lambda"), names_to = "variable", values_to = "value") %>%
-             mutate(number = as.integer(gsub("^l1_error_", "", variable)))) +
-      scale_y_log10() +
-      scale_x_log10() + 
-      geom_line(aes(x=number, y=value, colour=as.factor(lambda))) +theme_bw()
-    
-    k= 100
-    library(viridis)
-    library(magick)
-    #color_palette = colorRampPalette(c("black", "red"))(n/k)
-    color_palette <- viridis(k, option = "C")
-    for (t in 1:length(lambdas)){
-      #sizes = sapply(store_solutions[,t], function(x){ifelse(x < 1e-5, 0.5, 1)})
-      #V(g)$size <- sizes
-      V(g)$color <- color_palette[cut(sapply(store_solutions[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20,
-                                      breaks = length(color_palette), 
-                                      include.lowest = TRUE)]
-      #V(g)$color <- cut(sapply(state$track_state[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20,
-      #                                breaks = length(color_palette), 
-      #                                include.lowest = TRUE)
-      #V(g)$color <- sapply(state$true_p, function(x){color_palette[which.min( abs(x * (n/k) - (1:(n/k))))]})
-      V(g)$color = sapply(store_solutions[,t] , function(x){ifelse(x>0, min(log(1/x),20), 20)})/20
-      #layout <- layout_with_fr(g)
-      plot <- ggraph(g, layout = layout) +
-        geom_node_point(aes(colour = color), size=2) +        # Add nodes as points
-        geom_edge_link() +         # Add edges as links
-        #scale_colour_brewer(palette = "PuBuGn", direction = -1) + 
-        scale_colour_gradient(low = "red", high = "navy", limits = c(0,1))+
-        theme_bw()  + 
-        ggtitle(paste0("lambda = ", lambdas[t]))             # Remove axis labels and gridlines
-      print(plot)
-      title_plot = paste0("plot-pa-graph-solution",t,  ".png")
-      ggsave(title_plot, plot = plot, width = 9, height = 9)
-      # Load an image
-      image <- image_read(title_plot)
-      # Resize it to even dimensions
-      image_resized <- image_resize(image, "2832x2832")
-      image_write(image_resized, paste0("resized-", title_plot))
-      Sys.sleep(1)
+      if (is.null(res)) {
+        res <- data.frame(res_temp)
+      } else {
+        res <- rbind(res, res_temp)
+      }
+      write_csv(x = res,
+                file = paste0("experiments/results/pa_graph/", result_file))
     }
-    
+    lambda_it <- lambda_it + 1
+  }
+  if (do_plot) {
+    plot_results(res)
+    plot_results_on_graph(g, state$store_solutions, lambdas,
+                          "lambda = ",
+                          paste0("solution-plot-pa-power", pa_power,
+                                 "-algo-", propagate))
   }
 }
