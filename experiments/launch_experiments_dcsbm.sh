@@ -15,7 +15,7 @@ for algorithm in $algorithms; do
       for beta in $beta_values; do
         for gamma in $gamma_values; do
           for alpha_fp in $alpha_values; do 
-            sbatch experiments/simulation_dcsbm.sh 1000  "$beta" "$gamma" "$proba" 1 none 30 "$diffuse" denoise "$algorithm" 0.005 0.0005 3 "$alpha_fp"
+            sbatch experiments/simulation_dcsbm.sh 1000  "$beta" "$gamma" "$proba" 1 none 30 "$diffuse"  "$algorithm" "$alpha_fp"
           done
         done
       done
