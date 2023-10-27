@@ -19,6 +19,7 @@ heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 diffuse <- ceiling(as.numeric(args[10]))
 propagation <- args[11]
+alpha_fp <- as.numeric(args[12])
 #proba_between <- (as.numeric(args[12]))
 #proba_within <- (as.numeric(args[13]))
 #nb_blocks  <- ceiling(as.numeric(args[14]))
@@ -94,7 +95,8 @@ for (exp in 1:200) {
                              beta_v = beta_v,
                              gamma_v = gamma_v,
                              steps = diffuse,
-                             propagate = propagation)
+                             propagate = propagation,
+                             alpha_fp = alpha_fp)
    if (do_plot) {
     source("plot_results.r")
     plot_results_on_graph(g, state$track_state, 1:ncol(state$track_state),

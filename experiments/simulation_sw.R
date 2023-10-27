@@ -18,6 +18,7 @@ heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 p_norm <- args[10]
 nei <- ceiling(as.numeric(args[11])) # parameter of the SW graph
+alpha_fp <- as.numeric(args[12])
 if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
@@ -75,7 +76,9 @@ for (exp in 1:100){
                              y_init = y_init,
                              beta_v = beta_v,
                              gamma_v = gamma_v,
-                             steps = steps)
+                             steps = diffuse,
+                             propagate = propagation,
+                             alpha_fp = alpha_fp)
   
   #graph_attributes$W[subject_0, neighbors]
   for (lambda in 10^(seq(from = -5, to = -1, length.out = 30))) {

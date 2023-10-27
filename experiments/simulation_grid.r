@@ -68,7 +68,8 @@ for (exp in 1:100) {
                              beta_v = beta_v,
                              gamma_v = gamma_v,
                              steps = diffuse, ### Only 1 step for now
-                             propagate = "y") ### propagate true_p is a little difficult
+                             propagate = propagation,
+                             alpha_fp = alpha_fp) ### propagate true_p is a little difficult
   if (do_plot) {
     library(viridis)
     library(magick)

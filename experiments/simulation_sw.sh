@@ -31,7 +31,3 @@ Rscript experiments/simulation_sw.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $
 #$7: nb of steps for the epidemic evaluation
 #$8: diffusion steps before starting the estimation process
 #$9: algorithm: trajectory or diffusion
-<<<<<<< HEAD
-=======
-#$10: alpha_p
->>>>>>> 04a00f1fdb69010a167d0b6ca3dbfd88924c328c

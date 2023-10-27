@@ -19,7 +19,6 @@ steps <- ceiling(as.numeric(args[9]))
 diffuse <- ceiling(as.numeric(args[10]))
 propagation <- args[11]
 alpha_fp <- as.numeric(args[12])
-alpha_fn <- as.numeric(args[13])
 
 p_norm <- 1
 mode <- "denoise"
@@ -69,8 +68,7 @@ for (exp in 1:200) {
                              gamma_v = gamma_v,
                              steps = diffuse,
                              propagate = propagation,
-                             alpha_fp = alpha_fp,
-                             alpha_fn = alpha_fn)
+                             alpha_fp = alpha_fp)
   if (do_plot) {
     source("experiments/plot_results.r")
     plot_results_on_graph(g, state$track_state, 1:ncol(state$track_state),
