@@ -18,10 +18,10 @@ module load gsl
 module load gcc
 module load R/4.2.0
 
-result_file="res_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+result_file="new_res_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "result file is ${result_file}"
 cd $SCRATCH/$USER/epidemic_modelling/
-Rscript experiments/simulation_sw.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8 $9
+Rscript experiments/simulation_sw.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10}
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)
@@ -31,3 +31,7 @@ Rscript experiments/simulation_sw.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $
 #$7: nb of steps for the epidemic evaluation
 #$8: diffusion steps before starting the estimation process
 #$9: algorithm: trajectory or diffusion
+<<<<<<< HEAD
+=======
+#$10: alpha_p
+>>>>>>> 04a00f1fdb69010a167d0b6ca3dbfd88924c328c

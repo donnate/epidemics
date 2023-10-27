@@ -18,6 +18,8 @@ heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 diffuse <- ceiling(as.numeric(args[10]))
 propagation <- args[11]
+alpha_fp <- as.numeric(args[12])
+alpha_fn <- as.numeric(args[13])
 
 p_norm <- 1
 mode <- "denoise"
@@ -66,13 +68,15 @@ for (exp in 1:200) {
                              beta_v = beta_v,
                              gamma_v = gamma_v,
                              steps = diffuse,
-                             propagate = propagation)
+                             propagate = propagation,
+                             alpha_fp = alpha_fp,
+                             alpha_fn = alpha_fn)
   if (do_plot) {
-    source("plot_results.r")
+    source("experiments/plot_results.r")
     plot_results_on_graph(g, state$track_state, 1:ncol(state$track_state),
                           "Time step",
-                          paste0("plot-pa-power", pa_power, 
-                                 "-algo-", propagate))
+                          paste0("plot-pa-power", power_pa, 
+                                 "-algo-", propagation))
 
   }
   store_solutions <- matrix(0, nrow = n, ncol = length(lambdas))
@@ -134,6 +138,8 @@ for (exp in 1:200) {
       res_temp["heterogeneity_rates"] <- heterogeneity_rates
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
+      res_temp["alpha_fp"] <- alpha_fp
+      res_temp["alpha_fn"] <- alpha_fn
 
       # Propagate solution
       prop_sol <- propagate_solution(graph_attributes$W, p_hat,

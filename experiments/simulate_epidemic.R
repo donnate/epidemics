@@ -4,7 +4,8 @@ simulate_epidemic <- function(W, y_init,
                               beta_v,
                               gamma_v,
                               steps = 1, 
-                              propagate = "true_p") {
+                              propagate = "true_p",
+                              alpha_fp = alpha_fp) {
   # W : weighted graph adjacency matrix
   # y_init : initial observations
   # beta :  infection probability
@@ -23,11 +24,11 @@ simulate_epidemic <- function(W, y_init,
       prop <- propagate_one_step(W, as.numeric(y), beta_v, gamma_v)
     }
     true_p <- prop$true_p
-    y <- prop$y # realization of a random event
+    y <- sapply(true_p, function(x) { rbinom(1, 1, min(alpha_fp + x, 1)) }) # realization of a random event
     it_p <- 1
     while ((sum(y)  == 0) &&  it_p < 1000) {
       ## resample to make sure someone is infectious
-      y <- sapply(true_p, function(x) { rbinom(1, 1, x) })
+      y <- sapply(true_p, function(x) { rbinom(1, 1, min(alpha_fp + x, 1)) })
       it_p <- it_p + 1
     }
     track_state[, 1 + step] <- true_p
@@ -40,7 +41,9 @@ simulate_epidemic <- function(W, y_init,
 }
 
 propagate_one_step <- function(W, y,
-                               beta_v, gamma_v) {
+                               beta_v, gamma_v,
+                               alpha_fp = alpha_fp,
+                               alpha_fn = alpha_fn) {
   # W : weighted graph adjacency matrix
   # y_init : initial observations
   # beta :  infection probability
@@ -52,7 +55,7 @@ propagate_one_step <- function(W, y,
   ### if y = 1, the first part equals to 1-gamma_v, the second is 0
   ### if y = 0, the first part equals to 0, the second is beta_v * sum_j  W_{ij} * y_j
   y <- sapply(true_p, function(x) { rbinom(1, 1, x) })
-  print(sum(y))
-  print(which(y>0))
+  #print(sum(y))
+  #print(which(y>0))
   return(list(true_p = true_p, y = y))
 }
