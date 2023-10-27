@@ -13,7 +13,7 @@ N <- ceiling(as.numeric(args[3]))   # Number of nodes
 beta_epid <-  as.numeric(args[4]) # Infection rate
 gamma_epid <-  as.numeric(args[5]) # Recovery rate
 nb_init <-  ceiling(as.numeric(args[6])) # Nb of initial patients
-power_pa <- as.numeric(args[7]) # parameter of the PA graph
+dim_grid <- as.numeric(args[7]) # parameter of the grid graph
 heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 p_norm <- args[10]
@@ -30,7 +30,7 @@ lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
 res <- c()
 for (exp in 1:100) {
   # Create random graph
-  g <- sample_pa(N, power = power_pa, directed = FALSE)
+  g <- sample_grid(N, power = dim_grid, directed = FALSE)
   n <- vcount(g)
   if (do_plot) {
     layout <- layout_with_fr(g)

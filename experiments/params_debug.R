@@ -13,15 +13,15 @@ if (p_norm != "inf"){
   p_norm <- ceiling(as.numeric(p_norm))
 }
 do_plot <- TRUE
-p_sw = 0.1
-nei = 3
+p_sw = 0.5
+nei = 1
 nb_blocks <-  3
-proba_between <- 0.001
-proba_within <- 0.01
+proba_between <- 0.0005
+proba_within <- 0.005
 dc_heterogeneity = 1
 diffuse = 100
 steps = 30
 
-propagation  = "y"
+propagation  = "true_p"
 
 
