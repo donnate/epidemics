@@ -19,10 +19,13 @@ heterogeneity_rates <- args[8] # are the rates homogeneous?
 steps <- ceiling(as.numeric(args[9]))
 diffuse <- ceiling(as.numeric(args[10]))
 propagation <- args[11]
-proba_between <- (as.numeric(args[12]))
-proba_within <- (as.numeric(args[13]))
-nb_blocks  <- ceiling(as.numeric(args[14]))
+#proba_between <- (as.numeric(args[12]))
+#proba_within <- (as.numeric(args[13]))
+#nb_blocks  <- ceiling(as.numeric(args[14]))
 
+proba_between <- 0.0005
+proba_within <- 0.005
+nb_blocks  <- 3
 do_plot <- FALSE
 B <-  matrix(proba_between, nb_blocks, nb_blocks)
 diag(B) <- rep(proba_within, nb_blocks)

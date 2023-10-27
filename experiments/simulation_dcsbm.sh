@@ -2,7 +2,7 @@
 #SBATCH --job-name=array
 #SBATCH --output=experiments/logs/array_dcsbm_%A_%a.out
 #SBATCH --error=experiments/logs/array_dcsbm_%A_%a.err
-#SBATCH --array=1-100
+#SBATCH --array=1-5
 #SBATCH --time=6:00:00
 #SBATCH --partition=caslake
 #SBATCH --ntasks=5
@@ -21,7 +21,7 @@ module load R/4.2.0
 result_file="res_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "result file is ${result_file}"
 cd $SCRATCH/$USER/epidemic_modelling/
-Rscript experiments/simulation_dcsbm.r $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8 $9 $10 $11 $12
+Rscript experiments/simulation_dcsbm.r $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8 $9 #${10} ${11} ${12}
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)

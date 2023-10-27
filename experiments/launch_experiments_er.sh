@@ -11,7 +11,7 @@ for algorithm in $algorithms; do
     for proba in $proba_values; do
       for diffuse in $diffuse_values; do
         for beta in $beta_values; do
-          sbatch experiments/simulation_er.sh 1000 "$beta" 0.1 1 "$proba" none 20 "$diffuse" denoise
+          sbatch experiments/simulation_er.sh 1000 "$beta" 0.1 1 "$proba" none 20 "$diffuse" "$algorithm"
           # echo "sbatch experiments/simulation_er.sh 1000 $beta 0.1 1 $proba none 30 1 $diffuse denoise"  
         done
       done

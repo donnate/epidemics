@@ -11,7 +11,8 @@ for algorithm in $algorithms; do
   for dcsbm_value in $dcsbm_values; do
     for diffuse in $diffuse_values; do
       for beta in $beta_values; do
-        sbatch experiments/simulation_dcsbm.sh 1000 "$beta" 0.01 "$proba" 1 none 30 "$diffuse" denoise "$algorithm" 0.005 0.0005 3
+        sbatch experiments/simulation_dcsbm.sh 1000 "$beta" 0.01 1 "$dcsbm_value" none 30 "$diffuse" "$algorithm"
+        # dc_heterogeneity
       done
     done
   done

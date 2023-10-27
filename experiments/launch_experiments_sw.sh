@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the values for the variables
-proba_values="0.5 1 3"
+proba_values="0.01 0.1"
 diffuse_values="1 10 20"
 beta_values="0.9 0.1 0.05 0.01"
 algorithms="y true_p"
