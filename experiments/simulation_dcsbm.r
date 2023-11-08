@@ -162,6 +162,7 @@ for (exp in 1:200) {
       res_temp["p_within"] <- proba_within
       res_temp["steps"] <- steps
       res_temp["diffuse"] <- diffuse
+      res_temp["alpha_fp"] <- alpha_fp
       res_temp["propagation"] <- propagation
       res_temp["mode"] <- mode
       res_temp["heterogeneity_rates"] <- heterogeneity_rates

@@ -137,7 +137,6 @@ for (exp in 1:200) {
       res_temp["nb_init"] <- nb_init
       res_temp["p_norm"] <- p_norm
       res_temp["alpha_fp"] <- alpha_fp
-      res_temp["alpha_fn"] <- alpha_fn
 
       # Propagate solution
       prop_sol <- propagate_solution(graph_attributes$W, p_hat,
