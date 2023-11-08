@@ -134,6 +134,7 @@ for (exp in 1:200) {
                                     graph_attributes$Gamma)
       res_temp["lambda"] <- lambda
       # add the init statistics
+      res_temp["nb_observed_cases"] <- sum(y_prob)
       res_temp["average_degree"] <- mean(d)
       res_temp["median_degree"] <- median(d)
       res_temp["q25_degree"] <- quantile(d, 0.25)
