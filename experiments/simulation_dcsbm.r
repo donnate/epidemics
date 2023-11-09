@@ -108,11 +108,8 @@ for (exp in 1:200) {
   store_solutions <- matrix(0, nrow = n, ncol = length(lambdas))
   lambda_it <- 1
   for (lambda in lambdas) {
-    if (mode == "predict") {
-      y_prob <- y_init
-    } else {
-      y_prob <- state$y_observed
-    }
+    y_prob = state$track_state[, diffuse]
+    y_obs <- sapply(y_prob, function(x) { rbinom(1, 1, min(alpha_fp + x, 1)) })
     p_hat <- tryCatch(
       cvx_solver(y_prob,
                  graph_attributes$Gamma,
@@ -175,22 +172,23 @@ for (exp in 1:200) {
                                      state$beta_v,
                                      state$gamma_v, steps)
       # Propagate real data
-      prop_truth <- propagate_solution(graph_attributes$W, state$true_p,
+      prop_truth <- propagate_solution(graph_attributes$W, y_prob,
                                        state$beta_v, state$gamma_v, steps)
 
       # Propagate benchmark
-      prop_benchmark <- propagate_solution(graph_attributes$W, state$y_observed,
-                                          state$beta_v, state$gamma_v, steps)
+      prop_benchmark <- propagate_solution(graph_attributes$W, y_obs,
+                                          state$beta_v, state$gamma_v, diffuse-steps)
       # Compare the two
-      res_temp[paste0("l1_error_", 1)] <- mean(abs(p_hat - state$true_p))
-      res_temp[paste0("l2_error_", 1)] <- mean((p_hat - state$true_p)^2)
-      res_temp[paste0("benchmark_l1_error_", 1)] <- mean(abs(p_hat - state$y_observed))
-      res_temp[paste0("benchmark_l2_error_", 1)] <- mean((p_hat - state$y_observed)^2)
+      res_temp[paste0("l1_error_", 1)] <- mean(abs(p_hat - y_prob))
+      #res_temp[paste0("l2_error_", 1)] <- mean((p_hat - state$true_p)^2)
+      res_temp[paste0("benchmark_l1_error_", 1)] <- mean(abs(state$y_observed - y_prob))
+      res_temp[paste0("diff_l1", 1)] <- mean(abs(p_hat - y_prob))
+      #res_temp[paste0("benchmark_l2_error_", 1)] <- mean((p_hat - state$y_observed)^2)
       for (it in 1:steps){
         res_temp[paste0("l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
-        res_temp[paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
+        #res_temp[paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
         res_temp[paste0("benchmark_l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_benchmark[[it]]))
-        res_temp[paste0("benchmark_l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_benchmark[[it]])^2)
+        #res_temp[paste0("benchmark_l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_benchmark[[it]])^2)
       }
       # add to list of res
       if (is.null(res)) {
@@ -199,7 +197,7 @@ for (exp in 1:200) {
         res <- rbind(res, res_temp)
       }
       write_csv(x = res,
-                file = paste0("experiments/results/dcsbm_graph/", result_file))
+                file = paste0("experiments/results/dcsbm_graph/new-", result_file))
     }
     lambda_it <- lambda_it + 1
   }

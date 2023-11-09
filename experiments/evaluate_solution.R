@@ -3,7 +3,7 @@ source("experiments/simulate_epidemic.R")
 evaluate_solution <- function(y_observed, p_hat, true_prob, Gamma){
   return(data.frame(
     "risk_observed" = mean((y_observed - p_hat)^2),
-    "oracle" = mean((y_observed -  true_prob)^2),
+    "oracle_risk" = mean((y_observed -  true_prob)^2),
     "l2_error" = mean((true_prob - p_hat)^2),
     "l1_error" = mean(abs(true_prob - p_hat)),
     "Gamma_l1_error" = mean(abs(Gamma %*% (true_prob - p_hat))),

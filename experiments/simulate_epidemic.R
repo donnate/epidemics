@@ -25,14 +25,17 @@ simulate_epidemic <- function(W, y_init,
     }
     true_p <- prop$true_p
     y <- sapply(true_p, function(x) { rbinom(1, 1, min(alpha_fp + x, 1)) }) # realization of a random event
-    it_p <- 1
-    while ((sum(y)  == 0) &&  it_p < 1000) {
-      ## resample to make sure someone is infectious
-      y <- sapply(true_p, function(x) { rbinom(1, 1, min(alpha_fp + x, 1)) })
-      it_p <- it_p + 1
-    }
     track_state[, 1 + step] <- true_p
   }
+
+  it_p <- 1
+  while ((sum(y)  == 0) &&  it_p < 1000) {
+    ## resample to make sure someone is infectious (we must see someone infectious)
+    y <- sapply(true_p, function(x) { rbinom(1, 1, min(alpha_fp + x, 1)) })
+    it_p <- it_p + 1
+  }
+    
+
   return(list(true_p = true_p,
               y_observed = y,
               beta_v = beta_v,

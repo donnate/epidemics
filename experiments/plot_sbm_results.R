@@ -2,7 +2,7 @@ library(tidyverse)
 setwd("~/Documents/epidemic_modelling/experiments/results/dcsbm_graph/")
 theme_set(theme_bw(base_size = 14))
 folder_path <- "~/Documents/epidemic_modelling/experiments/results/dcsbm_graph/"
-file_list <- list.files(folder_path, pattern = "^new_res_99", full.names = TRUE)
+file_list <- list.files(folder_path, pattern = "^new_res_1025", full.names = TRUE)
 #file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
 # Read all the files into a single data frame using map_dfr.
 data <- map_dfr(file_list, read_csv)
@@ -76,8 +76,8 @@ unique(res$steps)
 unique(res$alpha_fp)
 ggplot(res %>% filter(#power_pa == 1.2,
   #gamma_epid == 0.1,
-  alpha_fp == 0.001,
-  diffuse==10,
+  alpha_fp == 0.01,
+  #diffuse==10,
   propagation == "true_p",
   p_norm == 1,
   gamma_epid == 0.01,
@@ -90,25 +90,110 @@ ggplot(res %>% filter(#power_pa == 1.2,
   #geom_errorbar(aes(ymin=q.25_l1_error_21, ymax=q.75_l1_error_21))+
   scale_x_log10()+
   scale_y_log10() +#
-  #geom_hline(data = res %>% filter(#power_pa == 1.2,
-    #gamma_epid == 0.1,
-    diffuse==10,
-    propagation == "true_p",
-    beta_epid != 0.5,
-    p_norm == 1,
-    #beta_epid < 0.5,
-    nb_init == 1) %>% group_by(beta_epid, gamma_epid, dc_heterogeneity) %>%
-      summarise(benchmark_l1_error_31 =median(benchmark_l1_error_31)) %>%
-      mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)),
-    aes(yintercept=benchmark_l1_error_31, colour = "Benchmark"),
-    linewidth=1.) +
-  facet_wrap(r0~dc_heterogeneity,
-             scales = "free_y", ncol = 2)+
+  # #geom_hline(data = res %>% filter(#power_pa == 1.2,
+  #   #gamma_epid == 0.1,
+  #   diffuse==10,
+  #   propagation == "true_p",
+  #   beta_epid != 0.5,
+  #   p_norm == 1,
+  #   #beta_epid < 0.5,
+  #   nb_init == 1) %>% group_by(beta_epid, gamma_epid, dc_heterogeneity) %>%
+  #     summarise(benchmark_l1_error_31 =median(benchmark_l1_error_31)) %>%
+  #     mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)),
+  #   aes(yintercept=benchmark_l1_error_31, colour = "Benchmark"),
+  #   linewidth=1.) +
+  facet_wrap(r0~diffuse,
+             scales = "free_y", ncol = 3)+
   xlab("lambda (Regularization Strength)") + 
   ylab(expression(italic(l[1]) ~ "error")) +
   labs(colour="Comparison") + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+#### look at the different predictions
+
+
+res0  = data %>%
+  filter( n > 600) %>%
+  group_by(lambda, beta_epid, gamma_epid, alpha_fp,
+           dc_heterogeneity, steps, heterogeneity_rates, nb_init, p_norm, mode,
+           diffuse, propagation) %>%
+  summarise_if(is.numeric, median) %>%
+  ungroup()
+
+res0 = res0 %>% 
+  select(-starts_with("l2_error"))%>% 
+  select(-starts_with("benchmark_l2_error"))
+
+colnames(res0)
+test1 = pivot_longer(res0 %>% 
+                       select(-starts_with("benchmark_l1_"))%>%
+                       select(lambda, beta_epid, gamma_epid, alpha_fp,
+                                 dc_heterogeneity, steps, heterogeneity_rates, nb_init, p_norm, mode,
+                                 diffuse, propagation, starts_with("l1_")), 
+                     cols =  starts_with("l1_"))
+test1["time"] = sapply(test1$name, 
+                       function(entry){as.numeric(sub("l1_error_([0-9]+).*", "\\1", 
+                                           entry))})
+
+colnames(test1)[ncol(test1)-1] = "Error"
+test_bench = pivot_longer(res0 %>% 
+                       select(-starts_with("l1_error"))%>%
+                       select(lambda, beta_epid, gamma_epid, alpha_fp,
+                              dc_heterogeneity, steps, heterogeneity_rates, nb_init, p_norm, mode,
+                              diffuse, propagation, starts_with("benchmark_l1_")), 
+                     cols =  starts_with("benchmark_l1_"))
+test_bench["time"] = sapply(test_bench$name, 
+                       function(entry){as.numeric(sub("benchmark_l1_error_([0-9]+).*", "\\1", 
+                                                      entry))})
+
+
+colnames(test_bench)[ncol(test_bench)-1] = "Error_bench"
+
+test_merged = merge(test1 %>% select(-name), test_bench%>% select(-name),
+              by = setdiff(colnames(test1), c("Error", "name")))
+
+ggplot(test_merged %>% filter(#power_pa == 1.2,
+  #gamma_epid == 0.1,
+  alpha_fp == 0.01,
+  #diffuse==10,
+  propagation == "true_p",
+  p_norm == 1,
+  gamma_epid == 0.01,
+  beta_epid != 0.5,
+  nb_init == 1)%>%
+    mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)), 
+       aes(x=time, y = Error, color = as.factor(lambda))) + 
+  geom_line() + 
+  geom_point(data=test_merged %>% filter(#power_pa == 1.2,
+    #gamma_epid == 0.1,
+    alpha_fp == 0.01,
+    #diffuse==10,
+    propagation == "true_p",
+    p_norm == 1,
+    lambda  < 0.01,
+    lambda>0.001,
+    gamma_epid == 0.01,
+    beta_epid != 0.5,
+    nb_init == 1)%>%
+      mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)) %>%
+      group_by(time, r0, diffuse) %>%
+      summarise(Error_bench=mean(Error_bench)),
+    aes(x=time, y=Error_bench, color = "benchmark"))+
+  facet_wrap(r0~diffuse,
+             scales = "free", ncol = 3)+
+  xlab("Time") + 
+  ylab(expression(italic(l[1]) ~ "error")) +
+  labs(colour="Comparison") + 
+  #scale_x_log10() + 
+  scale_y_log10() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+pivot_longer(res0 %>% 
+               select(-starts_with("l2_error"))%>% 
+               select(-starts_with("benchmark_l2_error")), 
+             cols = ends_with("l1_error_1"))
 
 
 ggplot(res %>% filter(#power_pa == 1.2,
