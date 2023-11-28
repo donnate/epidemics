@@ -5,7 +5,6 @@
 #SBATCH --array=1-5
 #SBATCH --time=6:00:00
 #SBATCH --partition=caslake
-#SBATCH --ntasks=5
 #SBATCH --mem=20G
 #SBATCH --account=pi-cdonnat
 

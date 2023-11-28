@@ -2,7 +2,7 @@ library(tidyverse)
 setwd("~/Documents/epidemic_modelling/experiments/results/dcsbm_graph/")
 theme_set(theme_bw(base_size = 14))
 folder_path <- "~/Documents/epidemic_modelling/experiments/results/dcsbm_graph/"
-file_list <- list.files(folder_path, pattern = "^new_res_1025", full.names = TRUE)
+file_list <- list.files(folder_path, pattern = "^new-new_", full.names = TRUE)
 #file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
 # Read all the files into a single data frame using map_dfr.
 data <- map_dfr(file_list, read_csv)
@@ -16,6 +16,7 @@ data <- map_dfr(file_list, read_csv)
 #data <- read_csv("~/Documents/epidemic_modelling/experiments/results/dcsbm_graph/test_local.csv")
 #### first group by experiment
 unique(data$n)
+data  = data[which(is.na(data$l1_error_100)==FALSE),]
 res  = data %>%
   filter( n > 600) %>%
   group_by(lambda, beta_epid, gamma_epid, alpha_fp,
@@ -29,7 +30,7 @@ res2  = data %>%
   group_by(lambda, beta_epid, gamma_epid, alpha_fp,
            dc_heterogeneity, steps, heterogeneity_rates, nb_init, p_norm, mode,
            diffuse, propagation) %>%
-  summarise(across(everything(), ~quantile(.x, probs = 0.25), .names = "q.25_{.col}")) %>%
+  summarise(across(everything(), ~quantile(.x, probs = 0.25, na.rm=TRUE), .names = "q.25_{.col}")) %>%
   ungroup()
 
 res3  = data %>%
@@ -37,7 +38,7 @@ res3  = data %>%
   group_by(lambda, beta_epid, gamma_epid, alpha_fp,
            dc_heterogeneity, steps, heterogeneity_rates, nb_init, p_norm, mode,
            diffuse, propagation) %>%
-  summarise(across(everything(), ~quantile(.x, probs = 0.75), .names = "q.75_{.col}")) %>%
+  summarise(across(everything(), ~quantile(.x, probs = 0.75, na.rm=TRUE), .names = "q.75_{.col}")) %>%
   ungroup()
 
 res4  = data %>%
@@ -47,6 +48,7 @@ res4  = data %>%
   summarise(across(everything(), ~mean(.x), .names = "mean_{.col}")) %>%
   ungroup()
 
+res0 =res
 res = merge(res, res2, by = c("lambda", "beta_epid", "gamma_epid", "alpha_fp",
                               "dc_heterogeneity", "steps", "heterogeneity_rates", "nb_init", "p_norm",
                               "diffuse", "mode", "propagation"))
@@ -55,10 +57,11 @@ res = merge(res, res3, by = c("lambda", "beta_epid", "gamma_epid", "alpha_fp",
                               "nb_init", "p_norm", "diffuse", "mode", "propagation"))
 dim(res)
 
+
 data %>%
   group_by(lambda, beta_epid, gamma_epid,  dc_heterogeneity, steps, 
            heterogeneity_rates, nb_init, p_norm) %>%
-  summarise(c = n())
+  summarise(c = n()) %>% select(c)
 ### 
 
 res_all = res 
@@ -76,6 +79,7 @@ unique(res$steps)
 unique(res$alpha_fp)
 ggplot(res %>% filter(#power_pa == 1.2,
   #gamma_epid == 0.1,
+  steps > 30,
   alpha_fp == 0.01,
   #diffuse==10,
   propagation == "true_p",
@@ -153,28 +157,29 @@ colnames(test_bench)[ncol(test_bench)-1] = "Error_bench"
 test_merged = merge(test1 %>% select(-name), test_bench%>% select(-name),
               by = setdiff(colnames(test1), c("Error", "name")))
 
+
+alpha_fp =0.1
+
 ggplot(test_merged %>% filter(#power_pa == 1.2,
-  #gamma_epid == 0.1,
-  alpha_fp == 0.01,
+  gamma_epid == 0.1,
+  alpha_fp == alpha_fp,
   #diffuse==10,
+  #diffuse == 10,
   propagation == "true_p",
   p_norm == 1,
-  gamma_epid == 0.01,
-  beta_epid != 0.5,
   nb_init == 1)%>%
-    mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)), 
+    mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)) %>%  
+  group_by(time, r0, diffuse, lambda) %>%
+    summarise(Error=mean(Error)), 
        aes(x=time, y = Error, color = as.factor(lambda))) + 
   geom_line() + 
   geom_point(data=test_merged %>% filter(#power_pa == 1.2,
-    #gamma_epid == 0.1,
-    alpha_fp == 0.01,
+    gamma_epid == 0.1,
+    alpha_fp == alpha_fp,
     #diffuse==10,
+    #diffuse == 10,
     propagation == "true_p",
     p_norm == 1,
-    lambda  < 0.01,
-    lambda>0.001,
-    gamma_epid == 0.01,
-    beta_epid != 0.5,
     nb_init == 1)%>%
       mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)) %>%
       group_by(time, r0, diffuse) %>%

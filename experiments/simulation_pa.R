@@ -12,19 +12,19 @@ result_file <- args[2]
 N <- ceiling(as.numeric(args[3]))   # Number of nodes
 beta_epid <-  as.numeric(args[4]) # Infection rate
 gamma_epid <-  as.numeric(args[5]) # Recovery rate
-nb_init <-  ceiling(as.numeric(args[6])) # Nb of initial patients
-power_pa <- as.numeric(args[7]) # parameter of the PA graph
-heterogeneity_rates <- args[8] # are the rates homogeneous?
-steps <- ceiling(as.numeric(args[9]))
-diffuse <- ceiling(as.numeric(args[10]))
-propagation <- args[11]
-alpha_fp <- as.numeric(args[12])
+nb_init <-  1 # Nb of initial patients
+power_pa <- as.numeric(args[6]) # parameter of the PA graph
+heterogeneity_rates <- "none" # are the rates homogeneous?
+steps <- 20
+diffuse <- 20
+propagation <- "true_p"
+alpha_fp <- as.numeric(args[7])
 
 p_norm <- 1
 mode <- "denoise"
 do_plot <- FALSE #TRUE
 
-lambdas <- 10^(seq(from = -5, to = -1, length.out = 30))
+lambdas <- 10^(seq(from = -5, to = 1, length.out = 30))
 
 res <- c()
 for (exp in 1:200) {
@@ -81,12 +81,12 @@ for (exp in 1:200) {
   lambda_it <- 1
   for (lambda in lambdas) {
     if (mode == "predict") {
-      y_prob <- y_init
+      y_obs <- y_init
     } else {
-      y_prob <- state$y_observed
+      y_obs <- state$y_observed
     }
     p_hat <- tryCatch(
-      cvx_solver(y_prob,
+      cvx_solver(y_obs,
                  graph_attributes$Gamma,
                  lambda, p_norm = p_norm),
       error = function(err) {
@@ -100,10 +100,11 @@ for (exp in 1:200) {
       p_hat[which(p_hat < 0)] <- 0
       p_hat[which(p_hat > 1)] <- 1
       store_solutions[, lambda_it] <- p_hat
-      res_temp <- evaluate_solution(state$y_observed,
-                                    p_hat,
-                                    state$true_p,
-                                    graph_attributes$Gamma)
+      res_temp <- data.frame("Accuracy_p_true" = mean(abs(p_hat  - state$true_p)),
+                             "Accuracy_y_true" = mean(abs(p_hat  - state$y_true)),
+                             "Benchmark_p_true"= mean(abs(state$y_observed - state$true_p)),
+                             "Benchmark_y_true"= mean(abs(state$y_observed - state$y_true))
+                             )
       res_temp["lambda"] <- lambda
       # add the init statistics
       res_temp["average_degree"] <- mean(d)

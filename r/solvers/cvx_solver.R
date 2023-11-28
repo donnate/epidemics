@@ -12,7 +12,7 @@ cvx_solver <- function(y_observed, Gamma, lambda, p_norm = 1){
   subject_0 = which(y_observed!=0)
   print(subject_0)
   p <- Variable(n_nodes)
-  constraints <- list(p >= 0, p <= 1, p[subject_0] == 1)
+  constraints <- list(p >= 0, p <= 1)
   # Define the quadratic loss
   loss <- sum((y_observed - p)^2) / n_nodes
   # Define the L-1 norm term

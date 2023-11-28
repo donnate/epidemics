@@ -2,7 +2,7 @@ library(tidyverse)
 setwd("~/Documents/epidemic_modelling/experiments/results/pa_graph/")
 theme_set(theme_bw(base_size = 14))
 folder_path <- "~/Documents/epidemic_modelling/experiments/results/pa_graph"
-file_list <- list.files(folder_path, pattern = "^res_984", full.names = TRUE)
+file_list <- list.files(folder_path, pattern = "^res_98", full.names = TRUE)
 #file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
 # Read all the files into a single data frame using map_dfr.
 data <- map_dfr(file_list, read_csv)
@@ -76,31 +76,31 @@ colnames(res)
 
 ggplot(res %>% filter(#power_pa == 1.2,
   #gamma_epid == 0.1,
-  diffuse==20,
+  diffuse==1,
   propagation == "y",
   p_norm == 1,
   beta_epid != 0.5,
   nb_init == 1) %>%
     mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)),
-  aes(x=lambda, l1_error_31))+
+  aes(x=lambda, l1_propagated_error_1))+
   geom_line(linewidth=1.2)+
   geom_point()+
-  geom_errorbar(aes(ymin=q.25_l1_error_31, ymax=q.75_l1_error_31))+
+  #geom_errorbar(aes(ymin=q.25_l1_propagated_error_1, ymax=q.75_l1_propagated_error_1))+
   scale_x_log10()+
   scale_y_log10() +#
   geom_hline(data = res %>% filter(#power_pa == 1.2,
     #gamma_epid == 0.1,
-    diffuse==20,
+    diffuse==1,
     propagation == "y",
     beta_epid != 0.5,
     p_norm == 1,
     #beta_epid < 0.5,
-    nb_init == 1) %>% group_by(beta_epid, gamma_epid, power_pa) %>%
-      summarise(benchmark_l1_error_31 =median(benchmark_l1_error_31)) %>%
+    nb_init == 1) %>% group_by(beta_epid, gamma_epid, p_sw) %>%
+      summarise(benchmark_l1_error_1 =median(benchmark_l1_error_1)) %>%
       mutate( r0 = paste0( "R0 = ", beta_epid/gamma_epid)),
-    aes(yintercept=benchmark_l1_error_31, colour = "Benchmark"),
+    aes(yintercept=benchmark_l1_error_1, colour = "Benchmark"),
     linewidth=1.) +
-  facet_wrap(r0~power_pa,
+  facet_wrap(r0~p_sw,
              scales = "free_y", ncol = 3,
              labeller = as_labeller(c(`0.2` = "power_PA = 0.2",
                                       `1.2` = "power_PA = 1.2",

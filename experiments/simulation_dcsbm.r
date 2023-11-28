@@ -13,16 +13,13 @@ result_file <- args[2]
 N <- ceiling(as.numeric(args[3]))   # Number of nodes
 beta_epid <-  as.numeric(args[4]) # Infection rate
 gamma_epid <-  as.numeric(args[5]) # Recovery rate
-nb_init <-  ceiling(as.numeric(args[6])) # Nb of initial patients
-dc_heterogeneity <- as.numeric(args[7]) # parameter of the PA graph
-heterogeneity_rates <- args[8] # are the rates homogeneous?
-steps <- ceiling(as.numeric(args[9]))
-diffuse <- ceiling(as.numeric(args[10]))
-propagation <- args[11]
-alpha_fp <- as.numeric(args[12])
-#proba_between <- (as.numeric(args[12]))
-#proba_within <- (as.numeric(args[13]))
-#nb_blocks  <- ceiling(as.numeric(args[14]))
+nb_init <-  1 # Nb of initial patients
+dc_heterogeneity <- as.numeric(args[6]) # parameter of the dcsbm graph
+alpha_fp <- as.numeric(args[7])
+heterogeneity_rates <- "none" # are the rates homogeneous?
+steps <- 50
+diffuse <- 20
+propagation <- "true_p"
 
 proba_between <- 0.0005
 proba_within <- 0.005
@@ -108,10 +105,10 @@ for (exp in 1:200) {
   store_solutions <- matrix(0, nrow = n, ncol = length(lambdas))
   lambda_it <- 1
   for (lambda in lambdas) {
-    y_prob = state$track_state[, diffuse]
-    y_obs <- sapply(y_prob, function(x) { rbinom(1, 1, min(alpha_fp + x, 1)) })
+    y_prob = state$true_p
+    y_obs <- state$y_observed
     p_hat <- tryCatch(
-      cvx_solver(y_prob,
+      cvx_solver(y_obs,
                  graph_attributes$Gamma,
                  lambda, p_norm = p_norm),
       error = function(err) {
@@ -177,18 +174,16 @@ for (exp in 1:200) {
 
       # Propagate benchmark
       prop_benchmark <- propagate_solution(graph_attributes$W, y_obs,
-                                          state$beta_v, state$gamma_v, diffuse-steps)
+                                          state$beta_v, state$gamma_v, steps)
+      
       # Compare the two
       res_temp[paste0("l1_error_", 1)] <- mean(abs(p_hat - y_prob))
-      #res_temp[paste0("l2_error_", 1)] <- mean((p_hat - state$true_p)^2)
       res_temp[paste0("benchmark_l1_error_", 1)] <- mean(abs(state$y_observed - y_prob))
       res_temp[paste0("diff_l1", 1)] <- mean(abs(p_hat - y_prob))
       #res_temp[paste0("benchmark_l2_error_", 1)] <- mean((p_hat - state$y_observed)^2)
       for (it in 1:steps){
         res_temp[paste0("l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_sol[[it]]))
-        #res_temp[paste0("l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_sol[[it]])^2)
         res_temp[paste0("benchmark_l1_error_", it + 1)] = mean(abs(prop_truth[[it]] - prop_benchmark[[it]]))
-        #res_temp[paste0("benchmark_l2_error_", it + 1)] = mean((prop_truth[[it]] - prop_benchmark[[it]])^2)
       }
       # add to list of res
       if (is.null(res)) {

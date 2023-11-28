@@ -2,8 +2,8 @@
 #SBATCH --job-name=array
 #SBATCH --output=experiments/logs/array_er_%A_%a.out
 #SBATCH --error=experiments/logs/array_er_%A_%a.err
-#SBATCH --array=1-5
-#SBATCH --time=6:00:00
+#SBATCH --array=1-1
+#SBATCH --time=24:00:00
 #SBATCH --partition=caslake
 #SBATCH --ntasks=3
 #SBATCH --mem=20G
@@ -21,7 +21,7 @@ module load R/4.2.0
 result_file="new_res_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "result file is ${result_file}"
 cd $SCRATCH/$USER/epidemic_modelling/
-Rscript experiments/simulation_er.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10}
+Rscript experiments/simulation_er.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $4 $5 $6 $7
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)
