@@ -2,10 +2,10 @@ library(tidyverse)
 setwd("~/Documents/epidemic_modelling/experiments/results/dcsbm_graph/")
 theme_set(theme_bw(base_size = 14))
 folder_path <- "~/Documents/epidemic_modelling/experiments/results/dcsbm_graph/"
-file_list <- list.files(folder_path, pattern = "^new-new_", full.names = TRUE)
+file_list <- list.files(folder_path, pattern = "^new-new_res_1086", full.names = TRUE)
 #file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
 # Read all the files into a single data frame using map_dfr.
-data <- map_dfr(file_list, read_csv)
+data <- bind_rows(lapply(file_list, read.csv))
 #data_list <- lapply(file_list, function(file) {
 #  data <- read.csv(file, stringsAsFactors = FALSE)
 #  data$filename <- file

@@ -25,10 +25,5 @@ Rscript experiments/simulation_er.R $SLURM_ARRAY_TASK_ID $result_file $1 $2 $3 $
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)
-#$4: nb of ``patient zero''s
-#$5: parameter of the ER graph
-#$6: heterogeneity of the rates
-#$7: nb of steps for the epidemic evaluation
-#$8: diffusion steps before starting the estimation process
-#$9: algorithm: trajectory or diffusion
-#$10: alpha_p
+#$4: parameter of the er graph
+#$5: alpha_fp

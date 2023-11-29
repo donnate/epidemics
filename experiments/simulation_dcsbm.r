@@ -122,10 +122,11 @@ for (exp in 1:200) {
       p_hat[which(p_hat < 0)] <- 0
       p_hat[which(p_hat > 1)] <- 1
       store_solutions[, lambda_it] <- p_hat
-      res_temp <- evaluate_solution(state$y_observed,
-                                    p_hat,
-                                    state$true_p,
-                                    graph_attributes$Gamma)
+      res_temp <- data.frame("Accuracy_p_true" = mean(abs(p_hat  - state$true_p)),
+                             "Accuracy_y_true" = mean(abs(p_hat  - state$y_true)),
+                             "Benchmark_p_true"= mean(abs(state$y_observed - state$true_p)),
+                             "Benchmark_y_true"= mean(abs(state$y_observed - state$y_true))
+                             )
       res_temp["lambda"] <- lambda
       # add the init statistics
       res_temp["nb_observed_cases"] <- sum(y_prob)
