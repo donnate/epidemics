@@ -13,6 +13,9 @@ from solvers import *
 
 
 df = pd.read_table("/scratch/midway3/cdonnat/epidemics/data/socfb-Berkeley13.txt", sep=" ", header = None)
+df.columns = ["From", "To"]
+G = nx.from_pandas_edgelist(df, source='From', target='To')
+d_max = np.asarray(nx.degree(G))[:,1].max()
 
 n_init = 1
 columns = ['Experiment', 'Method', 'Time', 'Lambda', 'n', 'p_er', 'Accuracy_true_p', 'Accuracy_true_y']
