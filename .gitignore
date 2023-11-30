@@ -1,6 +1,7 @@
 .Rproj.user/*
 *.csv
 *.RData
+python/__pycache__/*
 *.png
 *.pdf
 experiments/results/*
