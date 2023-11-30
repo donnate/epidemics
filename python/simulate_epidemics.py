@@ -63,8 +63,7 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
             "y_false": y_false,
             "y_true": y_true,
             "track_state": track_state
-            })
-    
+            })    
 
 def propagate_one_step_sparse(W, y, beta_v, gamma_v):
     """
@@ -104,7 +103,7 @@ import time
 def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
                       alpha_fp =0.001, 
                       n_init = 1, steps = 20, type_graph ="ER", p_er=0.01, 
-                      p_ws = 0.1, p_pl = 0.01, m = 3,
+                      p= 0.1, m=3,
                       seed = 1,
                       epsilon=0.01, do_plot = False,
                       min_clip=0):
@@ -115,11 +114,11 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
     elif type_graph == "expander":
         G = nx.paley_graph(p=n_nodes)
     elif type_graph == "small-world":
-        G = nx.connected_watts_strogatz_graph(n_nodes, k=m, p=p_ws, seed = seed)
+        G = nx.connected_watts_strogatz_graph(n_nodes, k=m, p=p, seed = seed)
     elif type_graph == "pa":
         G = nx.barabasi_albert_graph(n_nodes, m=m, seed =seed)
     elif type_graph == "power_law":
-        G = nx.powerlaw_cluster_graph(n_nodes, m=m, p_pl = p_pl, seed =seed)
+        G = nx.powerlaw_cluster_graph(n_nodes, m=m, p = p, seed =seed)
     else:
         print("Type of Graph Not implemented yet")
         return()
