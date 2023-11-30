@@ -29,7 +29,7 @@ for exp in np.arange(100):
             ### generate epidemic
             scenario = generate_scenario(n_nodes = n_nodes, beta = 0.9, gamma =0.1,
                         alpha_fp =0.00, 
-                        n_init = n_init, steps = steps, type_graph ="ER", p_er=p_er, 
+                        n_init = n_init, steps = steps, type_graph ="ER", p=p_er, 
                         epsilon=0.01, do_plot = False,
                         seed = args.seed)
             for lambda_ in [1e-4, 5 * 1e-4, 1e-3, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 20, 30, 50, 80, 100, 200, 500, 1000]:
