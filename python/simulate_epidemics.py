@@ -102,13 +102,13 @@ import time
 
 def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
                       alpha_fp =0.001, 
-                      n_init = 1, steps = 20, type_graph ="ER", p_er=0.01, 
+                      n_init = 1, steps = 20, type_graph ="ER", 
                       p= 0.1, m=3,
                       seed = 1,
                       epsilon=0.01, do_plot = False,
                       min_clip=0):
     if type_graph == "ER":
-        G = nx.erdos_renyi_graph(n=int(n_nodes), p=p_er, seed=seed)
+        G = nx.erdos_renyi_graph(n=int(n_nodes), p=p, seed=seed)
     elif type_graph == "2Dgrid":
         G = nx.grid_2d_graph(n=int(np.sqrt(n_nodes)), m=int(np.sqrt(n_nodes)))
     elif type_graph == "expander":

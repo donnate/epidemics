@@ -22,4 +22,4 @@ module load gcc
 module load python/anaconda-2021.05
 source activate epidemics
 
-python3 experiments/experiment_synthetic_graph.py --namefile $result_file --seed $SLURM_ARRAY_TASK_ID --n_nodes 1000 --beta 0.99 --gamma 0.001 --graph_type $1 --p $2 --alpha_fp $3
+python3 experiment_synthetic_graph.py --namefile $result_file --seed $SLURM_ARRAY_TASK_ID --n_nodes 1000 --beta 0.99 --gamma 0.001 --graph_type $1 --p $2 --m $3 --alpha_fp $4
