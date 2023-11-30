@@ -1,0 +1,14 @@
+.Rproj.user/*
+*.csv
+*.RData
+*.png
+*.pdf
+experiments/results/*
+experiments/logs/*
+.Rproj.user
+*.ipynb
+*.Rhistory
+experiments/.DS_Store
+.DS_Store
+*.mp4
+
