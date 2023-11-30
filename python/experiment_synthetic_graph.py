@@ -14,7 +14,7 @@ from solvers import *
 parser = argparse.ArgumentParser()
 parser.add_argument('--namefile', type=str)
 parser.add_argument('--seed', type=int)
-parser.add_argument('--steps', type=int, default=40)
+parser.add_argument('--steps', type=int, default=10)
 parser.add_argument('--n_step_predict', type=int, default=15)
 parser.add_argument('--beta', type=float, default=0.99)
 parser.add_argument('--gamma', type=float, default=0.001)
@@ -73,7 +73,7 @@ for exp in np.arange(100):
                              graph_type, n_nodes, p, m, scenario['epidemic']['y_true'].sum(),
                              scenario['W'].max(),
                              lambda_, 
-                              scenario['epidemic']['y_observed'].sum(),
+                             scenario['epidemic']['y_observed'].sum(),
                                     np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
                                     np.mean(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
                                     np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
@@ -83,7 +83,7 @@ for exp in np.arange(100):
                 current_p[np.where(current_p <min_clip)[0]] = 0
                 current_p_observed = scenario['epidemic']['y_observed']
                 ground_truth  = scenario['epidemic']['true_p']
-                n_nodes = nx.number_of_nodes(G)
+                n_nodes = scenario['W'].shape[0]
                 beta_v = [scenario['beta']] * n_nodes
                 gamma_v = [scenario['gamma']] * n_nodes
                 for it in np.arange(n_step_predict):
