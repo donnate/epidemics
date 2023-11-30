@@ -20,6 +20,6 @@ cd $SCRATCH/$USER/epidemics/python
 module load gsl
 module load gcc
 module load python/anaconda-2021.05
-conda activate epidemics
+source activate epidemics
 
 python3 experiments/experiment_soc.py --namefile $result_file --seed $SLURM_ARRAY_TASK_ID
