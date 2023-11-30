@@ -5,7 +5,7 @@ import scipy as sc
 import time
 
 def simulate_epidemic(W, y_init, beta_v, gamma_v,
-                      steps = 1, propagate = "true_p",
+                      steps = 1, 
                       alpha_fp = 0.1, seed = 1,
                       min_clip=0):
     """
@@ -24,7 +24,7 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
     track_state[:, 0] = y_init
     for step in np.arange(1,steps):
         print("Step "  + str(step) + " sparsity: " + str((true_p > 0).sum() ))
-        if (true_p > 0).sum() <  0.1 * n_nodes:
+        if (true_p > 0).sum() <  0.8 * n_nodes:
             print("Using sparsity")
             true_p = propagate_one_step_sparse(W, true_p, beta_v, gamma_v)
         else:
@@ -171,16 +171,17 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
                       alpha_fp =0.001, 
                       n_init = 1, steps = 20,
                       seed = 1,
-                      epsilon=0.01, do_plot = False,
+                      epsilon=1e-6, do_plot = False,
                       min_clip=0):
     
     n_nodes = nx.number_of_nodes(G)
     d_max = np.asarray(nx.degree(G))[:,1].max()
+    #d_max = np.asarray(nx.degree(G))[:,1].mean()
     weights = [None] * nx.number_of_edges(G)
     it = 0
     for (u, v) in G.edges():
-        G[u][v]['weight'] = 1.0/(d_max + epsilon) 
-        weights[it] = 1.0/(d_max + epsilon) #random.uniform(0, 10)  # Random weight between 0 and 10
+        G[u][v]['weight'] = 1.0 /(d_max + epsilon) 
+        weights[it] = 1.0 /(d_max + epsilon) #random.uniform(0, 10)  # Random weight between 0 and 10
         it += 1
     W = nx.adjacency_matrix(G)
     Gamma = 1.0/(d_max + epsilon) * nx.incidence_matrix(G, oriented=True)
@@ -188,7 +189,10 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
     beta_v = np.array([beta] * n_nodes)
     gamma_v = np.array([gamma] * n_nodes)
     y_init = np.zeros(n_nodes)
-    ind_init = int(np.ceil( np.random.random_sample(n_init) * n_nodes))
+    ##ind_init = int(np.ceil( np.random.random_sample(n_init) * n_nodes))
+    t = np.argsort(np.array(nx.degree(G))[:,1], )[::-1][1:1000]
+    np.random.shuffle(t)
+    ind_init = t[0:n_init]
     y_init[ind_init] = 1
     if do_plot : 
         pos = nx.kamada_kawai_layout(G)
@@ -210,7 +214,7 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
             time.sleep(1)
             
     return({"epidemic" : epidemic,
-           "W" : W,
+            "W" : W,
             "Gamma": Gamma,
             "y_init": y_init,
             "beta" : beta,
