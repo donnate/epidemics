@@ -203,7 +203,7 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
 
     
     epidemic = simulate_epidemic(W, y_init, beta_v, gamma_v,
-                steps = steps, propagate = "true_p",
+                steps = steps,
                 alpha_fp = alpha_fp, seed=seed,
                 min_clip=min_clip)
     if do_plot:
