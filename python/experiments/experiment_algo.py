@@ -17,8 +17,8 @@ results_df = pd.DataFrame(columns=columns)
 
 i = 0
 for exp in np.arange(100):
-    for n_nodes in [200, 500, 1000, 5000, 10000]:
-        for p_er in [0.005, 0.01, 0.02]:
+    for n_nodes in [200, 500, 800, 1000, 5000, 8000, 10000]:
+        for p_er in [0.005, 0.02]:
             ### generate epidemic
             scenario = generate_scenario(n_nodes = n_nodes, beta = 0.9, gamma =0.1,
                         alpha_fp =0.00, 
@@ -59,7 +59,7 @@ for exp in np.arange(100):
                                     np.mean(np.abs(res_cgd  - scenario['epidemic']['y_true']))]
                 i += 1
 
-                results_df.to_csv('~/Documents/epidemic_modelling/python/experiments/results_algo.csv', index=False)
+                results_df.to_csv('~/Documents/epidemic_modelling/python/experiments/results_algo2.csv', index=False)
 
 
 

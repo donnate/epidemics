@@ -2,8 +2,8 @@
 #SBATCH --job-name=array
 #SBATCH --output=python/experiments/logs/array_er_%A_%a.out
 #SBATCH --error=python/experiments/logs/array_er_%A_%a.err
-#SBATCH --array=1-1
-#SBATCH --time=36:00:00
+#SBATCH --array=1-20
+#SBATCH --time=12:00:00
 #SBATCH --partition=caslake
 #SBATCH --mem=20G
 #SBATCH --account=pi-cdonnat
@@ -22,7 +22,7 @@ module load gcc
 module load python/anaconda-2021.05
 conda activate epidemics
 
-Rscript experiments/experiment_algo.py
+python3 experiments/experiment_algo.py
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)
