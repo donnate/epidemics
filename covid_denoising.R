@@ -23,57 +23,128 @@ for (i in 1:nrow(population_data)){
 }
 population_data = population_data %>% rename(fips=FIPStxt)
 
+
+t = population_data %>% filter(State == "NY", year==2020) #[which(population_data$`Area name` == "New York")]
 data2022 <- read_csv(file="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-2022.csv")
 data2021 <-  read_csv(file="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-2021.csv")
 data2020 <-  read_csv(file="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-2020.csv")
 
 
-mask_used_per_county = read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/mask-use/mask-use-by-county.csv")
-mask_used_per_county = mask_used_per_county %>% rename(fips=COUNTYFP)
+#mask_used_per_county = read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/mask-use/mask-use-by-county.csv")
+#mask_used_per_county = mask_used_per_county %>% rename(fips=COUNTYFP)
 
 data_all  = rbind(data2022, data2021, data2020)
 data_all = data_all %>%
   mutate(year_for_pop=year(ymd(date))) %>%
-  mutate(year_for_pop=ifelse(year>2021, 2021, year))
-
-data_all = merge(data_all, population_data %>% select(fips,Value, year ), 
+  mutate(year_for_pop=ifelse(year_for_pop>2021, 2021, year_for_pop))
+data_all = data_all %>%
+  mutate(fips=as.numeric(fips))
+data_all = merge(data_all, population_data %>% select(fips,Value, year), 
                       by.x=c('fips', 'year_for_pop'), by.y=c('fips','year' ),
                       all.x=TRUE,all.y=FALSE)
 
+data_all = data_all %>%
+  group_by(state, county, date) %>%
+  summarize(cases = mean(cases),
+            deaths = mean(deaths),
+            pop = mean(Value),
+            fips = max(fips))
+
+# Assuming data_all is your dataframe
+data_all <- data_all %>%
+  arrange(county, state, date) %>% # Sort the data
+  group_by(county, state) %>% # Group by county and state
+  mutate(new_cases = cases - lag(cases, n = 1, default = 0)) # Calculate lag-1 difference
 
 data_all = data_all %>%
-  group_by(county, date) %>%
-  summarize(cases = sum(cases),
-            deaths = sum(deaths),
-            pop = sum(Value)) %>%
-  mutate(new_cases =  cases - lag(cases, n=1, order_by=date),
-         new_deaths =  deaths - lag(deaths, n=1, order_by=date))
+  mutate(new_cases = ifelse(new_cases <0, 0, new_cases)) 
+data_all = data_all %>%
+  mutate(new_cases = ifelse(new_cases > pop, pop, new_cases)) 
+
+#### Data looks good
+# Assuming data_all is your dataframe and new_cases is already calculated
+data_all <- data_all %>%
+  arrange(county, state, date) %>%
+  group_by(county, state) %>%
+  dplyr::mutate(cases_03da = zoo::rollmean(new_cases, k = 3, fill = 0, align = "right"),
+                cases_07da = zoo::rollmean(new_cases, k = 7, fill = 0, align = "right"),
+                cases_14da = zoo::rollmean(new_cases, k = 14, fill = 0, align = "right"))
 
 
-ggplot(data_all %>% filter( date < ymd("2021-01-01"), 
-                            county %in% c("Adams, ", "Bond", "Cook")))+ 
-  geom_line(aes(x=date, y=new_cases, colour=county)) +
+ggplot(data_all %>% filter( date < ymd("2022-01-01"), date >ymd("2021-01-01"), 
+                            county %in% c("Adams, ", "Bond", "Cook"),
+                            state  == "Illinois"))+ 
+  geom_line(aes(x=date, y=cases_03da/pop, colour=county)) +
   theme_bw()
 
-data_illinois[which(data_illinois["new_cases"]<0), "new_cases"] = 0
-data_illinois[which(data_illinois["new_deaths"]<0), "new_deaths"] = 0
+write_csv(data_all, "~/Downloads/processed_covid_data.csv")
+states = read_csv("~/Downloads/states.csv")
+data_all = data_all %>%
+  left_join(states, by = "state" )
+data_all = data_all %>% 
+  mutate('node_name' = paste0(county, ', ', code))
+data_all = data_all %>%
+  mutate(cases_07da = ifelse(cases_07da <0, 0, cases_07da)) 
+data_all = data_all %>%
+  mutate(new_cases = ifelse(cases_07da > pop, pop, cases_07da))
+write_csv(data_all, "~/Downloads/processed_covid_data.csv")
 
 
+dates = seq(from=as.Date("2020-01-01"), to=as.Date("2022-09-01"), by = 14)
+dates = seq(from=as.Date("2020-01-01"), to=as.Date("2022-09-01"), by = 14)
+train_dates = dates[seq(1,40, by=2)]
+test_dates = dates[seq(2,40, by=2)]
 
-data_all <- data_all %>%
-  dplyr::arrange(date) %>% 
-  dplyr::group_by(county) %>% 
-  dplyr::mutate(death_07da = zoo::rollmean(new_deaths, k = 7, fill = NA),
-                cases_07da = zoo::rollmean(new_cases, k = 7, fill = NA),
-                death_14da = zoo::rollmean(new_deaths, k = 14, fill = NA),
-                cases_14da = zoo::rollmean(new_cases, k = 14, fill = NA))
-
-ggplot(data_all %>% filter( date < ymd("2021-01-01"), 
+ggplot(data_all %>% filter( date < ymd("2022-01-01"), date >ymd("2021-01-01"), 
                             county %in% c("Adams, ", "Bond", "Cook")))+ 
+  geom_point(aes(x=date, y=cases_07da/pop, colour=county, shape=state)) +
+  theme_bw()
+
+
+
+
+
+library(tidyverse)
+ggplot(data_all %>% filter( date < ymd("2021-01-01"), 
+                            county %in% c("Adams, ", "Bond", "Cook"), state == "Illinois"))+ 
   geom_line(aes(x=date, y=cases_07da, colour=county)) +
   theme_bw()
 
-### join with population on fips
+install.packages(c("USAboundaries"))
+library(tidyverse)
+library(sf)
+library(tigris)
+
+#counties <- counties(state = "California", class = "sf")
+#counties <- counties %>% mutate(fips = as.numeric(paste0(STATEFP, COUNTYFP)))
+
+
+data_cal = data_all %>% filter(date %in% c(ymd("2020-12-25"),
+                                           ymd("2021-01-10"),
+                                           ymd("2021-01-20")),
+                               state =="California")
+data_merged <- left_join(counties, data_cal, 
+                         by = c("fips" = "fips"))
+ggplot(data_merged) +
+  geom_sf(aes(fill = cases_07da/pop * 100)) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title = "",
+       fill = "Number of new cases\n(as % of population)") +
+  facet_grid(.~date)
+  
+ggplot(data_merged) +
+  geom_sf(aes(fill = log(cases_07da))) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title = "",
+       fill = "Number of new cases") +
+  facet_grid(.~date)
+
+
+
+
+v### join with population on fips
 data_all <- data_all %>%
   mutate(cases_14da_per_100k = cases_14da/pop * 1e5,
          cases_7da_per_100k = cases_07da/pop * 1e5,
@@ -163,11 +234,21 @@ dates = seq(from=as.Date("2020-07-01"), to=as.Date("2022-09-01"), by = 14)
 
 reg  = lm( mean_delta_cases_Adams ~three_weeks_earlier_Adams, data= X %>% filter(date %in% dates)) 
 
+dates = seq(from=as.Date("2020-01-01"), to=as.Date("2022-09-01"), by = 14)
+train_dates = dates[1:40]
+test_dates = dates[41:length(dates)]
+
+write_csv(X %>% 
+            replace(is.na(.), 0), file = "~/Downloads/full_X.csv")
+write_csv(data_all %>% filter(date %in% train_dates), file = "~/Downloads/covid_train.csv")
+write_csv( data_all %>% filter(date %in% test_dates), file = "~/Downloads/covid_test.csv")
 
 
+ggplot(data_all) +
+  geom_point(aes(x = date, y = ))
 
 
-
+counties <- counties(state = "state_name", class = "sf")v
 
 
 
@@ -334,6 +415,8 @@ data_state = data_state %>%
 data_state[which(data_state["new_cases"]<0), "new_cases"] = 0
 data_state[which(data_state["new_deaths"]<0), "new_deaths"] = 0
 
+
+states 
 ggplot(data_state %>%filter(county %in% unique(data_state$county)[1:10]))+ 
   geom_line(aes(x=date, y=new_cases, colour=county)) +
   theme_bw()

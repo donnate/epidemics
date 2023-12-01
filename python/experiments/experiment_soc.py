@@ -42,6 +42,7 @@ min_clip = args.min_clip
 alpha_fp = args.alpha_fp
 
 columns = ['Experiment', 'Method', 'Time', 'Lambda', 'final_number_infected', 
+           'alpha_fp',
            'Accuracy_true_p', 'Accuracy_true_y',
            'bench_Accuracy_true_p', 'bench_Accuracy_true_y']
 for step in np.arange(n_step_predict):

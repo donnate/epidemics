@@ -41,6 +41,7 @@ alpha_fp = args.alpha_fp
 columns = ['Experiment', 'Method', 'Time',
            'graph_type',
             'n_nodes',
+            'alpha_fp',
              'p',  'm', 'n_infected', 'w',
             'Lambda', 'final_number_infected', 
            'Accuracy_true_p', 'Accuracy_true_y',
@@ -70,7 +71,9 @@ for exp in np.arange(100):
                 ### Propagate solution
                 
                 temp_res = [exp, 'SSNAL', end_time - start_time,  
-                             graph_type, n_nodes, p, m, scenario['epidemic']['y_true'].sum(),
+                             graph_type, n_nodes,
+                              args.alpha_fp,
+                                p, m, scenario['epidemic']['y_true'].sum(),
                              scenario['W'].max(),
                              lambda_, 
                              scenario['epidemic']['y_observed'].sum(),
