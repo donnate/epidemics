@@ -128,6 +128,11 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
     else:
         print("Type of Graph Not implemented yet")
         return()
+    components = nx.connected_components(G)
+    # Get the largest component
+    largest_component = max(components, key=len)
+    # Create a subgraph of G corresponding to the largest component
+    G = G.subgraph(largest_component)
     n_nodes = nx.number_of_nodes(G)
     d_max = np.asarray(nx.degree(G))[:,1].max()
     weights = [None] * nx.number_of_edges(G)
