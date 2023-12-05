@@ -1,0 +1,115 @@
+library(tidyverse)
+setwd("~/Documents/epidemic_modelling/")
+theme_set(theme_bw(base_size = 14))
+folder_path <- "~/Documents/epidemic_modelling/python/experiments/results"
+file_list <- list.files(folder_path, pattern = "results_algo_gen_graph_11*", full.names = TRUE)
+file_list2 <- file_list[361:length(file_list)]#file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
+# Read all the files into a single data frame using map_dfr.
+data <- map_dfr(file_list2, read_csv)
+v#data_list <- lapply(file_list, function(file) {
+#  data <- read.csv(file, stringsAsFactors = FALSE)
+#  data$filename <- file
+#  return(data)
+#})
+# Combine all individual data frames into one data frame
+#data <- do.call(rbind, data_list)
+unique(data$graph_type)
+unique(data$n_nodes)
+colnames(data)
+unique(data$lambda)
+colnames(data)
+
+ggplot(data %>% filter(alpha_fp==0), 
+       aes(x= graph_type , n_infected, colour == m, fill=p))+
+  #geom_line(linewidth=1.)+
+  geom_boxplot()+
+  xlab("lambda (Regularization Strength)") + 
+  ylab("Accuracy (s)") +
+  labs(colour="Comparison") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ggplot(data %>% filter(alpha_fp==0, n_infected<200), 
+       aes(x=Lambda, Accuracy_true_p, colour=n_infected))+
+  #geom_line(linewidth=1.)+
+  geom_point()+
+  scale_x_log10()+
+  scale_y_log10() +#
+  facet_wrap(graph_type~p+m,
+             scales = "free_y")+
+  xlab("lambda (Regularization Strength)") + 
+  ylab("Accuracy (s)") +
+  labs(colour="Comparison") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ggplot(data %>% filter(graph_type =="ER"), 
+       aes(x=Lambda, Accuracy_true_p, colour=final_number_infected))+
+  #geom_line(linewidth=1.)+
+  geom_point()+
+  scale_x_log10()+
+  scale_y_log10() +#
+  facet_wrap(~p,scales = "free_y")+
+  xlab("lambda (Regularization Strength)") + 
+  ylab("Accuracy (s)") +
+  labs(colour="Comparison") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+#### first group by experiment
+res  = data %>%
+  filter(n_infected < 300) %>%
+  group_by(Method, Lambda, graph_type, n_nodes, p, m, alpha_fp) %>%
+  summarise(mean_acc = mean(Accuracy_true_p),
+            n_infected = mean(n_infected),
+            q25_acc= quantile(Accuracy_true_p, 0.25),
+            q75_acc= quantile(Accuracy_true_p, 0.75),
+            mean_bench_Accuracy_true_p = mean(bench_Accuracy_true_p),
+            q25_bench_Accuracy_true_p= quantile(bench_Accuracy_true_p, 0.25),
+            q75__bench_Accuracy_true_p= quantile(bench_Accuracy_true_p, 0.75),
+            ) %>%
+  ungroup()
+
+ggplot(res %>% filter(alpha_fp==0, graph_type=="small-world"), 
+       aes(x=Lambda, mean_acc, colour=n_infected))+
+  geom_line(linewidth=1.)+
+  geom_point()+
+  geom_errorbar(aes(ymin=q25_acc, ymax=q75_acc))+
+  scale_x_log10()+
+  scale_y_log10() +#
+  facet_grid(.~p,
+             scales = "free_y")+
+  xlab("lambda (Regularization Strength)") + 
+  ylab(expression(italic(l[1]) ~ "error")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+res25  = data %>%
+  group_by(Method, Lambda, graph_type, n_nodes, p, m, alpha_fp) %>%
+  summarise_all(quantile, 25) %>%
+  ungroup()
+
+
+colnames(res)
+ggplot(res, aes(x=Lambda, med_time, colour=Method))+
+  geom_line(linewidth=1.)+
+  geom_point()+
+  geom_errorbar(aes(ymin=q25_time, ymax=q75_time))+
+  scale_x_log10()+
+  scale_y_log10() +#
+  facet_grid(alpha_fp~p,
+             scales = "free_y",
+             labeller = as_labeller(c(`0.005` = "p_er = 0.005",
+                                      `0.02` = "p_er = 0.02",
+                                      `200` = "n = 200",
+                                      `500` = "n = 500",
+                                      `800` = "n = 800",
+                                      `1000` = "n = 1000",
+                                      `5000` = "n = 5000"
+             ))
+  )+
+  xlab("lambda (Regularization Strength)") + 
+  ylab("Compute time (s)") +
+  labs(colour="Comparison") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))

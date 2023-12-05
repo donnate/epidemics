@@ -4,6 +4,8 @@ import numpy as np
 import scipy as sc
 import time
 
+from graph_utils import generate_graph, generate_weights
+
 def simulate_epidemic(W, y_init, beta_v, gamma_v,
                       steps = 1, 
                       alpha_fp = 0.1, seed = 1,
@@ -119,6 +121,10 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
         G = nx.barabasi_albert_graph(n_nodes, m=m, seed =seed)
     elif type_graph == "power_law":
         G = nx.powerlaw_cluster_graph(n_nodes, m=m, p = p, seed =seed)
+    elif type_graph == "knn":
+        phi = 0.1
+        df = generate_graph(n_nodes)
+        weights = generate_weights(df, m, phi)
     else:
         print("Type of Graph Not implemented yet")
         return()
@@ -208,7 +214,8 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
     if do_plot:
         for i in np.arange(steps + 1):
             plt.figure()
-            nx.draw(G, pos = pos, node_color = epidemic["track_state"][:, i], edge_color='gray' )
+            nx.draw(G, pos = pos, node_color = epidemic["track_state"][:, i], edge_color='gray',
+                    node_size=20 )
             plt.show()
             time.sleep(1)
             

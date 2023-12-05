@@ -42,7 +42,9 @@ columns = ['Experiment', 'Method', 'Time',
            'graph_type',
             'n_nodes',
             'alpha_fp',
-             'p',  'm', 'n_infected', 'w',
+            'p',  'm', 'n_infected', 'w',
+            'steps',
+            'n_step_predict',
             'Lambda', 'final_number_infected', 
            'Accuracy_true_p', 'Accuracy_true_y',
            'bench_Accuracy_true_p', 'bench_Accuracy_true_y']
@@ -71,12 +73,13 @@ for exp in np.arange(100):
                 ### Propagate solution
                 
                 temp_res = [exp, 'SSNAL', end_time - start_time,  
-                             graph_type, n_nodes,
-                              args.alpha_fp,
-                                p, m, scenario['epidemic']['y_true'].sum(),
-                             scenario['W'].max(),
-                             lambda_, 
-                             scenario['epidemic']['y_observed'].sum(),
+                            graph_type, n_nodes,
+                            args.alpha_fp,
+                            p, m, scenario['epidemic']['y_true'].sum(),
+                            scenario['W'].max(),
+                            args.steps, args.n_step_predict,
+                            lambda_, 
+                            scenario['epidemic']['y_observed'].sum(),
                                     np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
                                     np.mean(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
                                     np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
@@ -130,8 +133,7 @@ for exp in np.arange(100):
                 results_df.loc[i] = temp_res
                 i += 1
 
-
-                results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
+                results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/new_results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
                 if np.mean(res_ssnal == 0) == 1:
                     break
                 

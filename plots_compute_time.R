@@ -1,6 +1,6 @@
 library(tidyverse)
 setwd("~/Documents/epidemic_modelling/")
-theme_set(theme_bw(base_size = 14))
+theme_set(theme_bw(base_size = 16))
 folder_path <- "~/Documents/epidemic_modelling/python/experiments/results"
 file_list <- list.files(folder_path, pattern = "^results_algo10*", full.names = TRUE)
 file_list#file_list <- c(file_list, list.files(folder_path, pattern = "^759", full.names = TRUE))
@@ -23,26 +23,27 @@ res  = data %>%
   summarise(med_time = median(Time),
             q25_time = quantile(Time,0.25),
             q75_time = quantile(Time,0.75),
-            n = n()
+            counts = n()
             ) %>%
   ungroup()
 
 colnames(res)
-ggplot(res, aes(x=Lambda, med_time, colour=Method))+
+ggplot(res %>% filter(p_er == 0.005), 
+       aes(x=Lambda, med_time, colour=Method))+
   geom_line(linewidth=1.)+
   geom_point()+
   geom_errorbar(aes(ymin=q25_time, ymax=q75_time))+
   scale_x_log10()+
   scale_y_log10() +#
-  facet_grid(n~p_er,
+  facet_grid(p_er~n,
              scales = "free_y",
              labeller = as_labeller(c(`0.005` = "p_er = 0.005",
                                      `0.02` = "p_er = 0.02",
                                      `200` = "n = 200",
                                      `500` = "n = 500",
                                      `800` = "n = 800",
-                                     `1000` = "n = 1000",
-                                     `5000` = "n = 5000"
+                                     `1000` = "n = 1,000",
+                                     `5000` = "n = 5,000"
                             ))
              )+
   xlab("lambda (Regularization Strength)") + 
