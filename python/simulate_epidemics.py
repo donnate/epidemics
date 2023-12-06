@@ -136,6 +136,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
     n_nodes = nx.number_of_nodes(G)
     d_max = np.asarray(nx.degree(G))[:,1].max()
     weights = [None] * nx.number_of_edges(G)
+    W_binary = nx.adjacency_matrix(G)
     it = 0
     for (u, v) in G.edges():
         G[u][v]['weight'] = 1.0/(d_max + epsilon) 
@@ -169,7 +170,8 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
             time.sleep(1)
             
     return({"epidemic" : epidemic,
-           "W" : W,
+            "W" : W,
+            "W_binary": W_binary,
             "Gamma": Gamma,
             "y_init": y_init,
             "beta" : beta,
@@ -188,6 +190,7 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
     d_max = np.asarray(nx.degree(G))[:,1].max()
     #d_max = np.asarray(nx.degree(G))[:,1].mean()
     weights = [None] * nx.number_of_edges(G)
+    W_binary = nx.adjacency_matrix(G)
     it = 0
     for (u, v) in G.edges():
         G[u][v]['weight'] = 1.0 /(d_max + epsilon) 
@@ -226,6 +229,7 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
             
     return({"epidemic" : epidemic,
             "W" : W,
+            "W_binary" :W_binary,
             "Gamma": Gamma,
             "y_init": y_init,
             "beta" : beta,

@@ -2,7 +2,7 @@
 #SBATCH --job-name=array
 #SBATCH --output=experiments/logs/array_semisynth_er_%A_%a.out
 #SBATCH --error=experiments/logs/array_semisynth_er_%A_%a.err
-#SBATCH --array=1-20
+#SBATCH --array=1-10
 #SBATCH --time=12:00:00
 #SBATCH --partition=caslake
 #SBATCH --mem=20G

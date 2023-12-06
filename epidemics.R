@@ -2,7 +2,10 @@ library(outbreaks)
 library(incidence)
 library(ggplot2)
 
-linelist <- ebola_sim_clean$linelist
+linelist <- ebola_sim_clean$linelist ##### Do the same
+i <- incidence(linelist$date_of_onset)
+
+test <-  read_csv("~/Downloads/test_covid.csv")
 i <- incidence(linelist$date_of_onset)
 plot(i) +
   theme_bw() # full outbreak

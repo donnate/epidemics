@@ -67,7 +67,7 @@ for exp in np.arange(100):
             for lambda_ in [0.001, 0.005, 0.01, 0.05,  0.1, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10, 
                             15, 20, 30, 50, 80, 100]:
                 start_time = time.time() 
-                res_ssnal = ssnal_solver(scenario['epidemic']['y_observed'], scenario['W'], lambda_)
+                res_ssnal = ssnal_solver(scenario['epidemic']['y_observed'], scenario['W_binary'], lambda_)
                 end_time = time.time() 
                 res_ssnal = res_ssnal[:,0] 
                 ### Propagate solution
@@ -133,7 +133,7 @@ for exp in np.arange(100):
                 results_df.loc[i] = temp_res
                 i += 1
 
-                results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/new_results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
+                results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/binarized_new_results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
                 if np.mean(res_ssnal == 0) == 1:
                     break
                 

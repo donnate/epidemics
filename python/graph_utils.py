@@ -11,7 +11,8 @@ def get_initial_centers(val, centers):
         quantiles.append(i * int(val.shape[0]/centers))
     return quantiles
     
-def generate_graph(n):
+def generate_graph(n, seed = 0):
+    np.random.seed(seed)
     coords = np.zeros((n, 2))
     coords[:, 0] = np.random.uniform(0, 1, n)
     coords[:, 1] = np.random.uniform(0, 1, n)
