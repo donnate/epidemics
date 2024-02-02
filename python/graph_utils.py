@@ -55,7 +55,7 @@ def generate_dfs(df, weights, n):
     G = generate_graph_from_weights(df, weights, n)
     src = np.random.choice(np.arange(n))
     dfs_tree, path = get_dfs_path(G, src)
-    return G, dfs_tree, path
+    return G, dfs_tree, path, src
 
 def get_parent_node(mst, path, srn, nodenum):
     neighs = list(mst[nodenum].keys())
@@ -63,33 +63,42 @@ def get_parent_node(mst, path, srn, nodenum):
     parent = neighs[np.argmin(length_to_srn)]
     return parent
 
-def interpolate_X(X, folds, foldnum, path, mst, srn):
-    fold = folds[foldnum]
-    X_tilde = X.copy()
-    for node in fold:
-        parent = get_parent_node(mst, path, srn, node)
-        X_tilde[node,:] = X[parent,:]
-    return X_tilde
 
-def get_folds(mst, path, n, plot_tree=False):
+def get_folds(mst, path, n, nb_folds=2,
+              plot_tree=False, colours_code = {0:"black",
+                                          1: "red",
+                                          2: "blue",
+                                          3: "green",
+                                          4: "pink",
+                                          5: "purple",
+                                           6:"orange",
+                                          7: "brown",
+                                          8: "grey",
+                                          9: "yellow"
+                                         }):
     srn = np.random.choice(range(n),1)[0]
     print(f"Source node is {srn}")
-
-    fold1 = []
-    fold2 = []
-    colors = [None] * n
-    for key, value in path[srn].items():
-        if (value%2)==0:
-            fold1.append(key)
-            colors[key] = "orange"
-        elif (value%2)==1:
-            fold2.append(key)
-            colors[key] = "blue"
-        else:
-            colors[key] = "red"
+    
+    folds = {}
+    node_colors = [np.nan] * n
+    nb_folds = 3
+    paths = dict(nx.shortest_path_length(mst_tree, source=srn))
+    for i in np.arange(nb_folds):
+        folds[i] = [key for key, value in paths.items() if value % nb_folds == i]
+        for u in folds[i]:
+            node_colors[u] = i
     if plot_tree:
-        nx.draw_kamada_kawai(mst, node_color = colors, node_size=10)
-    return srn, fold1, fold2, colors
+        nx.draw_kamada_kawai(mst, node_color = node_colors, node_size=10)
+    return srn, folds, node_colors
+
+def interpolate(X, G, folds, foldnum):
+    fold = folds[foldnum]
+    newX = copy.deepcopy(X)
+    for node in fold:
+        neighbours = list(G.neighbors(node))
+        neighbours = list(set(neighbours) - set(fold))
+        newX[node,:] = np.mean(X[neighbours,:], axis=0)
+    return newX
 
 def generate_graph_from_weights(df, weights, n):
     G = nx.Graph()

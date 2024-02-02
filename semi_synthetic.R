@@ -63,7 +63,13 @@ res  = data %>%
             q75_acc= quantile(Accuracy_true_p, 0.75),
             mean_bench_Accuracy_true_p = median(bench_Accuracy_true_p),
             q25_bench_Accuracy_true_p= quantile(bench_Accuracy_true_p, 0.25),
-            q75__bench_Accuracy_true_p= quantile(bench_Accuracy_true_p, 0.75),
+            q75_bench_Accuracy_true_p= quantile(bench_Accuracy_true_p, 0.75),
+            mean_accuracy_prop_14 = median(accuracy_prop_14),
+            q25_accuracy_prop_14= quantile(accuracy_prop_14, 0.25),
+            q75_accuracy_prop_14= quantile(accuracy_prop_14, 0.75),
+            mean_accuracy_benchmark_prop_14 = median(accuracy_benchmark_prop_14),
+            q25_accuracy_benchmark_prop_14 =quantile(accuracy_benchmark_prop_14, 0.25),
+            q75_accuracy_benchmark_prop_14= quantile(accuracy_benchmark_prop_14, 0.75),
             ) %>%
   ungroup()
 
@@ -72,6 +78,18 @@ ggplot(res,
   geom_line(linewidth=1.)+
   geom_point()+
   geom_errorbar(aes(ymin=q25_acc, ymax=q75_acc))+
+  #geom_line(aes(x=Lambda, mean_bench_Accuracy_true_p, colour="Benchmark"), linewidth=1.)+
+  scale_x_log10()+
+  scale_y_log10() +#
+  xlab("lambda (Regularization Strength)") + 
+  ylab(expression(italic(l[1]) ~ "error")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(res, 
+       aes(x=Lambda, mean_accuracy_prop_14, colour="Denoising"))+
+  geom_line(linewidth=1.)+
+  geom_point()+
+  geom_errorbar(aes(ymin=q25_accuracy_prop_14, ymax=q75_accuracy_prop_14))+
   #geom_line(aes(x=Lambda, mean_bench_Accuracy_true_p, colour="Benchmark"), linewidth=1.)+
   scale_x_log10()+
   scale_y_log10() +#

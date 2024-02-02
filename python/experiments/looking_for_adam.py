@@ -66,6 +66,16 @@ for exp in np.arange(100):
                 end_time = time.time() 
                 res_ssnal = res_ssnal[:,0] 
                 ### Propagate solution
+                ##### Cross-validate to obtain the actual result
+
+
+
+                ##### Generate the solution
+                for j in index:
+                     res = simulate_epidemic()
+
+
+                ##### Select the tuple.
                 
                 temp_res = [exp, 'SSNAL', end_time - start_time,  lambda_, scenario['epidemic']['y_observed'].sum(),
                                     np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),

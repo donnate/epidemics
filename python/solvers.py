@@ -17,6 +17,41 @@ def ssnal_solver(y_observed, W, lambda_):
     return(sol)
 
 
+def CV_ssnal_solver(y_observed, W, G, lambda_range, nb_folds = 3):
+    ##### Start by creating a tree
+    mst = nx.minimum_spanning_tree(G)
+    path = dict(nx.shortest_path_length(mst, source=srn))
+    n = nx.number_of_nodes(G)
+    folds = get_folds(mst, path, n, nb_folds=nb_folds,
+              plot_tree=False)
+    ##### Run k-fold crosss validation
+    y_interpolated = np.zeros((n, 1))
+    results = np.zeros((len(lambda_range), nb_folds))
+    for k, j in enumerate(folds.keys()):
+        fold = folds[j]
+        y_interpolated = interpolate(y_observed, mst, folds, foldnum)
+        y_test =  y_observed[fold]
+        for kk,lambda_ in enumerate(lambda_range):
+            ssnal = SSNAL(gamma=lambda_, verbose=0)
+            res_ssnal = ssnal.fit(X=y_interpolated.reshape((n_nodes,1)),
+                  weight_matrix=W.todense(), save_centers=True)
+            sol = res_ssnal.centers_.T
+            sol = np.clip(sol, 0, 1)
+            err = np.sum(np.square(y_test-sol[fold]) / len(y_test))
+            results[k, kk] = err
+    results_agg  = np.mean(results, 0)
+    index_lambda_best = np.argmin(results_agg)
+    lambda_best = lambda_range[index_lambda_best]
+
+    n_nodes  = len(y_observed)
+    ssnal = SSNAL(gamma=lambda_best, verbose=0)
+    res_ssnal = ssnal.fit(X=y_observed.reshape((n_nodes,1)),
+          weight_matrix=W.todense(), save_centers=True)
+    sol = res_ssnal.centers_.T
+    sol = np.clip(sol, 0, 1)
+    return(sol)
+
+
 def admm_solver(y_observed, W, lambda_):
     n_nodes  = len(y_observed)
     admm = ADMM(gamma=lambda_, verbose=0)

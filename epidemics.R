@@ -6,6 +6,7 @@ linelist <- ebola_sim_clean$linelist ##### Do the same
 i <- incidence(linelist$date_of_onset)
 
 test <-  read_csv("~/Downloads/test_covid.csv")
+for u in
 i <- incidence(linelist$date_of_onset)
 plot(i) +
   theme_bw() # full outbreak

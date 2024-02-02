@@ -22,4 +22,4 @@ module load gcc
 module load python/anaconda-2021.05
 source activate epidemics
 
-python3 experiments/experiment_soc.py --namefile $result_file --seed $SLURM_ARRAY_TASK_ID
+python3 experiments/experiment_soc.py --namefile $result_file --seed $SLURM_ARRAY_TASK_ID --alpha_fp $1

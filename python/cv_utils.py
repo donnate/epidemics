@@ -8,12 +8,11 @@ def get_mst_path(G):
     path = dict(nx.all_pairs_shortest_path_length(mst))
     return mst, path
 
-def generate_mst(df, weights, n):
-    G = generate_graph_from_weights(df, weights, n)
+def generate_mst(G):
     mst, path = get_mst_path(G)
     return G, mst, path
 
-def get_parent_node(mst, path, srn, nodenum):
+def get_neighbour_node(mst, path, srn, nodenum):
     neighs = list(mst[nodenum].keys())
     length_to_srn = [path[neigh][srn] for neigh in neighs]
     parent = neighs[np.argmin(length_to_srn)]
@@ -21,9 +20,8 @@ def get_parent_node(mst, path, srn, nodenum):
 
 def interpolate_X(X, folds, foldnum, path, mst, srn):
     fold = folds[foldnum]
-    
     for node in fold:
-        parent = get_parent_node(mst, path, srn, node)
+        parent = get_parent_node(mst, path, srn, node)   #### average 
         X[node,:] = X[parent,:]
     return X
 

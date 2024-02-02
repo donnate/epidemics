@@ -4,7 +4,8 @@ import numpy as np
 import scipy as sc
 import time
 
-from graph_utils import generate_graph, generate_weights
+
+from graph_utils import generate_graph, generate_weights, generate_graph_from_weights
 
 def simulate_epidemic(W, y_init, beta_v, gamma_v,
                       steps = 1, 
@@ -32,13 +33,13 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
         else:
             true_p.resize((n_nodes,))
             true_p = propagate_one_step(W, true_p, beta_v, gamma_v)
-        print(true_p.shape)
+        #print(true_p.shape)
         track_state[:, step] = true_p
         true_p = np.reshape(true_p, (n_nodes,))
-        print(step)
+        #print(step)
         true_p.resize((n_nodes,))
         true_p = np.asarray(true_p)
-        print(true_p.shape)
+        #print(true_p.shape)
         true_p[np.where(true_p < min_clip)[0]] = 0
         #print(true_p)
     
@@ -125,6 +126,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
         phi = 0.1
         df = generate_graph(n_nodes)
         weights = generate_weights(df, m, phi)
+        G = generate_graph_from_weights(df, weights, n_nodes)
     else:
         print("Type of Graph Not implemented yet")
         return()
@@ -132,7 +134,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
     # Get the largest component
     largest_component = max(components, key=len)
     # Create a subgraph of G corresponding to the largest component
-    G = G.subgraph(largest_component)
+    #G = G.subgraph(largest_component)
     n_nodes = nx.number_of_nodes(G)
     d_max = np.asarray(nx.degree(G))[:,1].max()
     weights = [None] * nx.number_of_edges(G)
@@ -171,6 +173,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
             
     return({"epidemic" : epidemic,
             "W" : W,
+            "G" : G,
             "W_binary": W_binary,
             "Gamma": Gamma,
             "y_init": y_init,

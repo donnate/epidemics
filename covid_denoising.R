@@ -70,14 +70,16 @@ data_all <- data_all %>%
                 cases_07da = zoo::rollmean(new_cases, k = 7, fill = 0, align = "right"),
                 cases_14da = zoo::rollmean(new_cases, k = 14, fill = 0, align = "right"))
 
+data_all <- data_all %>%
+  mutate(prop_cases_07da = cases_07da/pop)
 
 ggplot(data_all %>% filter( date < ymd("2022-01-01"), date >ymd("2021-01-01"), 
                             county %in% c("Adams, ", "Bond", "Cook"),
                             state  == "Illinois"))+ 
-  geom_line(aes(x=date, y=cases_03da/pop, colour=county)) +
+  geom_line(aes(x=date, y=cases_07da/pop, colour=county)) +
   theme_bw()
 
-write_csv(data_all, "~/Downloads/processed_covid_data.csv")
+
 states = read_csv("~/Downloads/states.csv")
 data_all = data_all %>%
   left_join(states, by = "state" )
@@ -88,12 +90,15 @@ data_all = data_all %>%
 data_all = data_all %>%
   mutate(new_cases = ifelse(cases_07da > pop, pop, cases_07da))
 write_csv(data_all, "~/Downloads/processed_covid_data.csv")
+data_all = read_csv( "~/Downloads/processed_covid_data.csv")
+dates_beginning = seq(from=as.Date("2020-02-01"), to=as.Date("2020-09-01"), by = 1)
+write_csv(data_all %>% filter(date %in% dates_beginning), file = "~/Downloads/covid_beginning.csv")
 
-
-dates = seq(from=as.Date("2020-01-01"), to=as.Date("2022-09-01"), by = 14)
-dates = seq(from=as.Date("2020-01-01"), to=as.Date("2022-09-01"), by = 14)
-train_dates = dates[seq(1,40, by=2)]
-test_dates = dates[seq(2,40, by=2)]
+dates = seq(from=as.Date("2020-04-01"), to=as.Date("2022-09-01"), by = 1)
+train_dates = dates[seq(1,length(dates), by=2)]
+test_dates = dates[seq(2,length(dates), by=2)]
+write_csv(data_all %>% filter(date %in% train_dates), file = "~/Downloads/covid_train.csv")
+write_csv( data_all %>% filter(date %in% test_dates), file = "~/Downloads/covid_test.csv")
 
 ggplot(data_all %>% filter( date < ymd("2022-01-01"), date >ymd("2021-01-01"), 
                             county %in% c("Adams, ", "Bond", "Cook")))+ 
@@ -115,14 +120,30 @@ library(tidyverse)
 library(sf)
 library(tigris)
 
-#counties <- counties(state = "California", class = "sf")
-#counties <- counties %>% mutate(fips = as.numeric(paste0(STATEFP, COUNTYFP)))
+state="Wyoming"
+state="Montana"
+counties <- counties(state = state, class = "sf")
+counties <- counties %>% mutate(fips = as.numeric(paste0(STATEFP, COUNTYFP)))
 
 
 data_cal = data_all %>% filter(date %in% c(ymd("2020-12-25"),
                                            ymd("2021-01-10"),
-                                           ymd("2021-01-20")),
-                               state =="California")
+                                           ymd("2021-01-20"),
+                                           ymd("2021-01-30")),
+                               state ==state)
+
+data_cal = data_all %>% filter(date %in% c(ymd("2020-03-15"),
+                                           ymd("2021-03-30"),
+                                           ymd("2021-04-15"),
+                                           ymd("2021-04-30")),
+                               state ==state)
+
+data_cal = data_all %>% filter(date %in% c(ymd("2021-01-01"),
+                                           ymd("2021-01-04"),
+                                           ymd("2021-01-08"),
+                                           ymd("2021-01-12")),
+                               state ==state)
+
 data_merged <- left_join(counties, data_cal, 
                          by = c("fips" = "fips"))
 ggplot(data_merged) +
@@ -134,14 +155,20 @@ ggplot(data_merged) +
   facet_grid(.~date)
   
 ggplot(data_merged) +
-  geom_sf(aes(fill = log(cases_07da))) +
+  geom_sf(aes(fill =  cases_07da)) +
   scale_fill_viridis_c() +
   theme_minimal() +
   labs(title = "",
        fill = "Number of new cases") +
   facet_grid(.~date)
 
-
+ggplot(data_merged) +
+  geom_sf(aes(fill =  pop)) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title = "",
+       fill = "Number of new cases") +
+  facet_grid(.~date)
 
 
 v### join with population on fips

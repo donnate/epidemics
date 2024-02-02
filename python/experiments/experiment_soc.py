@@ -49,8 +49,8 @@ columns = ['Experiment', 'Method', 'Time',
 for step in np.arange(n_step_predict):
     columns += ['accuracy_prop_' + str(step), 
                'accuracy_benchmark_prop_' + str(step)]
-results_df = pd.DataFrame(columns=columns)
-
+all_lambdas = [0.01, 0.05,  0.1, 0.5, 1, 2, 3, 5, 10, 15, 20, 30, 50, 80, 100, 200, 300, 500, 800, 1000]
+results_df = pd.DataFrame(np.zeros(( 1000 * len(all_lambdas),  len(columns))), columns=columns)
 i = 0
 for exp in np.arange(1000):
             ### generate epidemic
@@ -61,7 +61,7 @@ for exp in np.arange(1000):
                         epsilon=0.001, do_plot = False, min_clip=1e-5,
                         seed = args.seed)
             print('Infected: ' + str(scenario['epidemic']['y_observed'].sum()))
-            for lambda_ in [0.01, 0.05,  0.1, 0.5, 1, 2, 3, 5, 10, 15, 20, 30, 50, 80, 100]:
+            for lambda_ in all_lambdas_:
                 start_time = time.time() 
                 res_ssnal = ssnal_solver(scenario['epidemic']['y_observed'],scenario['W'], lambda_)
                 end_time = time.time() 

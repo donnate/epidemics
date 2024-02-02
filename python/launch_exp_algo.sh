@@ -22,7 +22,8 @@ module load gcc
 module load python/anaconda-2021.05
 conda activate epidemics
 
-python3 experiments/experiment_algo.py --namefile $result_file
+python3 experiments/experiment_algo.py --namefile $result_file --seed $SLURM_ARRAY_TASK_ID
+
 #$1: n (population size)
 #$2: beta (infection rate)
 #$3: gamma (recovery probability)
