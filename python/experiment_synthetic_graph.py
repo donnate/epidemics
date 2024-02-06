@@ -49,10 +49,20 @@ columns = ['Experiment', 'Method', 'Time',
             'steps',
             'n_step_predict',
             'Lambda', 'final_number_infected', 
-            'Accuracy_true_p', 'Accuracy_true_y',
+            'Accuracy_true_p', 
+             'Accuracy_true_p_l2', 
+            'Accuracy_true_y',
             'Accuracy_true_p_pos',
             'Accuracy_true_p_neg',  
-            'bench_Accuracy_true_p', 'bench_Accuracy_true_y']
+            'Accuracy_true_p_pos_l2',
+            'Accuracy_true_p_neg_l2', 
+            'bench_Accuracy_true_p',
+            'bench_Accuracy_true_p_l2',
+            'bench_Accuracy_true_y',
+            'bench_Accuracy_true_p_pos',
+            'bench_Accuracy_true_p_neg',  
+            'bench_Accuracy_true_p_pos_l2',
+            'bench_Accuracy_true_p_neg_l2']
 for step in np.arange(n_step_predict):
     columns += ['accuracy_prop_' + str(step), 
                 'Accuracy_true_p_pos_'  + str(step),
@@ -78,7 +88,7 @@ for exp in np.arange(100):
         res_ssnal = ssnal_solver(scenario['epidemic']['y_observed'], scenario['W_binary'], lambda_)
         end_time = time.time() 
         res_ssnal = res_ssnal[:,0] 
-        res_ssnal[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
+        #res_ssnal[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
         
         ### Propagate solution
         
@@ -91,11 +101,19 @@ for exp in np.arange(100):
                     lambda_, 
                     scenario['epidemic']['y_observed'].sum(),
                     np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])),
                     np.mean(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
                     np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
                     np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
                     np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
+                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
                     np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true'])),
+                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip])
                     ]
         current_p = res_ssnal
         current_p[np.where(current_p <min_clip)[0]] = 0
@@ -193,26 +211,34 @@ for exp in np.arange(100):
                 weight_matrix=scenario['W'].todense(), save_centers=True)
     sol = res_ssnal.centers_.T
     sol = np.clip(sol, 0, 1).flatten()
-    sol[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
+    #sol[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
+    res_ssnal = sol
     ### Propagate solution
     
     temp_res = [exp, 'SSNAL-opt', end_time - start_time,  
-                graph_type, n_nodes,
-                args.alpha_fp,
-                p, m, scenario['epidemic']['y_true'].sum(),
-                scenario['W'].max(),
-                args.steps, args.n_step_predict,
-                lambda_best, 
-                scenario['epidemic']['y_observed'].sum(),
-                np.mean(np.abs(sol - scenario['epidemic']['true_p'])),
-                np.mean(np.abs(sol  - scenario['epidemic']['y_true'])),
-                np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                #np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < 0]),
-                np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true'])),
-                ]
-    current_p = sol
+                    graph_type, n_nodes,
+                    args.alpha_fp,
+                    p, m, scenario['epidemic']['y_true'].sum(),
+                    scenario['W'].max(),
+                    args.steps, args.n_step_predict,
+                    lambda_best, 
+                    scenario['epidemic']['y_observed'].sum(),
+                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.mean(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
+                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
+                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
+                    np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true'])),
+                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true']))
+                    ]
     current_p[np.where(current_p <min_clip)[0]] = 0
     current_p_observed = scenario['epidemic']['y_observed']
     ground_truth  = scenario['epidemic']['true_p']
@@ -220,31 +246,31 @@ for exp in np.arange(100):
     beta_v = [scenario['beta']] * n_nodes
     gamma_v = [scenario['gamma']] * n_nodes
     for it in np.arange(n_step_predict):
-        print(it)
+        #print(it)
         if (current_p > 0).sum() <  0.8 * n_nodes:
-            print("Using sparsity")
+            #print("Using sparsity")
             current_p = propagate_one_step_sparse(scenario['W'], current_p, beta_v, gamma_v)
         else:
             current_p.resize((n_nodes,))
             current_p = propagate_one_step(scenario['W'], current_p, beta_v, gamma_v)
         current_p = np.reshape(current_p, (n_nodes,))
-        print(step)
+        #print(step)
         current_p.resize((n_nodes,))
         current_p = np.asarray(current_p)
         current_p[np.where(current_p <min_clip)[0]] = 0
         if (current_p_observed > 0).sum() <  0.8 * n_nodes:
-            print("Using sparsity")
+            #print("Using sparsity")
             current_p_observed = propagate_one_step_sparse(scenario['W'], current_p_observed, beta_v, gamma_v)
         else:
             current_p_observed.resize((n_nodes,))
             current_p_observed = propagate_one_step(scenario['W'], current_p_observed, beta_v, gamma_v)
         current_p_observed = np.reshape(current_p_observed, (n_nodes,))
-        print(step)
+        #print(step)
         current_p_observed.resize((n_nodes,))
         current_p_observed = np.asarray(current_p_observed)
         current_p_observed[np.where(current_p_observed <min_clip)[0]] = 0
         if (ground_truth > 0).sum() <  0.8 * n_nodes:
-            print("Using sparsity")
+            #print("Using sparsity")
             ground_truth = propagate_one_step_sparse(scenario['W'], ground_truth, beta_v, gamma_v)
         else:
             ground_truth.resize((n_nodes,))

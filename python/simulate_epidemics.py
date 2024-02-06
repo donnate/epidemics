@@ -10,7 +10,8 @@ from graph_utils import generate_graph, generate_weights, generate_graph_from_we
 def simulate_epidemic(W, y_init, beta_v, gamma_v,
                       steps = 1, 
                       alpha_fp = 0.1, seed = 1,
-                      min_clip=0):
+                      min_clip=0,
+                      diffuse_p = True):
     """
     # W : weighted graph adjacency matrix
     # y_init : initial observations
@@ -25,14 +26,18 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
     true_p = y_init
     track_state = np.zeros((n_nodes, steps + 1))
     track_state[:, 0] = y_init
+    realized_state = np.zeros((n_nodes, steps + 1))
+    realized_state[:, 0] = y_init
     for step in np.arange(1,steps):
-        print("Step "  + str(step) + " sparsity: " + str((true_p > 0).sum() ))
+        #print("Step "  + str(step) + " sparsity: " + str((true_p > 0).sum() ))
         if (true_p > 0).sum() <  0.8 * n_nodes:
-            print("Using sparsity")
-            true_p = propagate_one_step_sparse(W, true_p, beta_v, gamma_v)
+                #print("Using sparsity")
+                true_p = propagate_one_step_sparse(W, true_p, beta_v, gamma_v)
         else:
-            true_p.resize((n_nodes,))
-            true_p = propagate_one_step(W, true_p, beta_v, gamma_v)
+                true_p.resize((n_nodes,))
+                true_p = propagate_one_step(W, true_p, beta_v, gamma_v)
+        realized_state[:, step] =np.random.binomial(n=1, p=np.clip(true_p, 0, 1))
+
         #print(true_p.shape)
         track_state[:, step] = true_p
         true_p = np.reshape(true_p, (n_nodes,))
@@ -41,6 +46,7 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
         true_p = np.asarray(true_p)
         #print(true_p.shape)
         true_p[np.where(true_p < min_clip)[0]] = 0
+        realized_state[:, step] = np.random.binomial(n=1, p=np.clip(true_p, 0, 1))
         #print(true_p)
     
     y_true = np.random.binomial(n=1, p=np.clip(true_p, 0, 1))
@@ -50,13 +56,14 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
       ## resample to make sure someone is infectious (we must see someone infectious)
         y_true = np.random.binomial(n=1, p=np.clip(true_p, 0, 1)) 
         it_p = it_p + 1
-        print("it_p: " + str(it_p))
+        #print("it_p: " + str(it_p))
         
     index_observed = np.where(y_true!=0)
     #### 
     y_false = np.random.binomial(n=1, p=[alpha_fp] * n_nodes)
     y_false[index_observed] = 0
     y_observed = np.clip(y_true + y_false, 0, 1)
+    realized_state[:, steps-1] = y_observed
     
 
     return({"true_p" : true_p,
@@ -65,7 +72,8 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
             "gamma_v": gamma_v,
             "y_false": y_false,
             "y_true": y_true,
-            "track_state": track_state
+            "track_state": track_state,
+            'realized_state' : realized_state
             })    
 
 def propagate_one_step_sparse(W, y, beta_v, gamma_v):
@@ -100,6 +108,29 @@ def propagate_one_step(W, y, beta_v, gamma_v):
     #print(D.shape, y.shape, true_p.shape)
     true_p = np.clip(true_p, 0, 1)
     return(true_p)
+
+def propagate_one_step_with_sampling(W, y, beta_v, gamma_v):
+    """
+    W : weighted graph adjacency matrix
+    y_init : initial observations
+    beta :  infection probability
+    gamma : recovery probability
+    """
+    W = W.todense()
+    n_nodes = W.shape[0]
+    D = np.eye(n_nodes)- np.diag(gamma_v) + \
+        np.dot(np.diag(1 - y), np.dot( W, np.diag(beta_v)))
+    true_p = np.dot(D, y.reshape((n_nodes, 1))).reshape((-1,))
+    #print(D.shape, y.shape, true_p.shape)
+    true_p = np.clip(true_p, 0, 1)
+
+    obs = np.zeros((n_nodes,))
+    infected = np.where(y > 0)[0]
+    obs = y - np.random.binomial(n=1, p=gamma_v[infected])
+    healthy = np.where(y == 0)[0]
+    #print(D.shape, y.shape, true_p.shape)
+    obs[healthy] = np.random.binomial(n=1, p=true_p[infected])
+    return(obs)
 
 import time
 
@@ -136,6 +167,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
     # Create a subgraph of G corresponding to the largest component
     #G = G.subgraph(largest_component)
     n_nodes = nx.number_of_nodes(G)
+    #d_max = np.asarray(nx.degree(G))[:,1].mean()
     d_max = np.asarray(nx.degree(G))[:,1].max()
     weights = [None] * nx.number_of_edges(G)
     W_binary = nx.adjacency_matrix(G)
@@ -146,6 +178,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
         it += 1
     W = nx.adjacency_matrix(G)
     Gamma = 1.0/(d_max + epsilon) * nx.incidence_matrix(G, oriented=True)
+    Gamma0 = nx.incidence_matrix(G, oriented=True)
     
     beta_v = np.array([beta] * n_nodes)
     gamma_v = np.array([gamma] * n_nodes)
@@ -176,6 +209,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
             "G" : G,
             "W_binary": W_binary,
             "Gamma": Gamma,
+            "Gamma0": Gamma0,
             "y_init": y_init,
             "beta" : beta,
             "gamma" : gamma

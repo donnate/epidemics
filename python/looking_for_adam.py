@@ -6,8 +6,8 @@ import time
 import numpy as np
 import networkx as nx
 import sys, os
-sys.path.append('/scratch/midway3/cdonnat/epidemics/python')
 
+sys.path.append('/scratch/midway3/cdonnat//epidemics_2/epidemics/python')
 from simulate_epidemics import * 
 from solvers import *
 
@@ -39,36 +39,36 @@ gamma = args.gamma
 min_clip = args.min_clip
 alpha_fp = args.alpha_fp
 nb_folds = 5 
-T_max = 30
 lambda_range = np.exp((np.arange(-4, 2, step=0.2)) * np.log(10))
 
-columns = ['Experiment', 'Method', 'Time',
-           'graph_type',
-            'n_nodes',
-            'alpha_fp',
-            'p',  'm', 'n_infected', 'w',
-            'steps',
-            'n_step_predict',
-            'Lambda', 'final_number_infected', 
-            'Accuracy_true_p', 'Accuracy_true_y',
-            'Accuracy_true_p_pos',
-            'Accuracy_true_p_neg',  
-            'bench_Accuracy_true_p', 'bench_Accuracy_true_y']
-for step in np.arange(n_step_predict):
-    columns += ['accuracy_prop_' + str(step), 
-                'Accuracy_true_p_pos_'  + str(step),
-                'Accuracy_true_p_neg_'  + str(step), 
-               'accuracy_benchmark_prop_' + str(step)]
-results_df = pd.DataFrame(columns=columns)
-increment = 0
-for exp in np.arange(100):
-    ### generate epidemic
+def compute_threshold(sol, time, scenario, delta = 0.1, min_clip = 1e-3):
+    A_inv = np.linalg.pinv(scenario['Gamma0'].todense())
+    # Compute the Euclidean norm of each column of A_inv
+    column_norms = np.linalg.norm(A_inv, axis=0)
+    n_nodes = nx.number_of_nodes(scenario['G'])
+    # Find the maximal norm
+    rho = np.max(column_norms)
+    Delta_p_1 =  np.sum(np.abs(scenario['Gamma'].T.dot(sol)))
+    Delta_p_0 =  np.sum(np.abs(scenario['Gamma'].T.dot(sol))>min_clip)
+    p_0 = np.sum(np.abs(sol) > min_clip)
+    d_max = np.asarray(nx.degree(scenario['G']))[:,1].max()
+    kappa = 1./(2 * np.sqrt(np.min([d_max, time])))
+    thres =2 * np.sqrt(2) * rho * np.log(4 * n_nodes**2/delta)  * np.min([Delta_p_1, 
+                                                                         Delta_p_0 *  2 * np.sqrt(2) * rho * np.log(4 * n_nodes**2/delta)/kappa**2  + 2 * p_0/n_nodes * np.log(4/delta)**2 ])
+    return(thres)
+        
+
+success = pd.DataFrame(np.zeros((10, 5)),columns= ['exp', 'success-ours', 'length-ours', 'success-naive', 'length-naive'])
+T_max = 30
+#success = pd.DataFrame(np.zeros((10, 5)),columns= ['exp', 'success-ours', 'length-ours', 'success-naive', 'length-naive'])
+for exp in np.arange(1, 10):
+    print("Experiment nb " + str(exp))
     scenario = generate_scenario(n_nodes = n_nodes, 
                                     beta = beta, gamma=gamma,
                 alpha_fp =alpha_fp, 
                 n_init = n_init, steps = steps, type_graph =graph_type,
                 p=p, m=m,
-                seed = args.seed,
+                seed = 1,
                 epsilon=0.001, do_plot = False,
                 min_clip=min_clip)
     print('Infected: ' + str(scenario['epidemic']['y_observed'].sum()))
@@ -116,49 +116,63 @@ for exp in np.arange(100):
                 weight_matrix=scenario['W'].todense(), save_centers=True)
     sol = res_ssnal.centers_.T
     sol = np.clip(sol, 0, 1).flatten()
-    sol[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
+    #sol[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
     ### Propagate solution
-    
-    temp_res = [exp, 'SSNAL-opt', end_time - start_time,  
-                graph_type, n_nodes,
-                args.alpha_fp,
-                p, m, scenario['epidemic']['y_true'].sum(),
-                scenario['W'].max(),
-                args.steps, args.n_step_predict,
-                lambda_best, 
-                scenario['epidemic']['y_observed'].sum(),
-                np.mean(np.abs(sol - scenario['epidemic']['true_p'])),
-                np.mean(np.abs(sol  - scenario['epidemic']['y_true'])),
-                np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                #np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < 0]),
-                np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true'])),
-                ]
     current_p = sol
     current_p[np.where(current_p <min_clip)[0]] = 0
     current_p_observed = scenario['epidemic']['y_observed']
-    results_df.loc[increment] = temp_res
-
+    
+    columns = ['Experiment', 'node_init', 'time',
+                'thres',
+               'graph_type',
+                'n_nodes',
+                'alpha_fp',
+                'p',  'm', 'n_infected', 'w',
+                'steps',
+                'n_step_predict',
+                'Lambda', 'final_number_infected', 
+                'l1_sol_minus_proposed', 
+                'l1_sol_minus_proposed_pos',
+                'l1_sol_minus_proposed_neg',
+                'l1_obs_minus_proposed', 
+                'l1_obs_minus_proposed_pos',
+                'l1_obs_minus_proposed_neg',
+                'l2_sol_minus_proposed', 
+                'l2_sol_minus_proposed_pos',
+                'l2_sol_minus_proposed_neg',
+                'l2_obs_minus_proposed', 
+                'l2_obs_minus_proposed_pos',
+                'l2_obs_minus_proposed_neg']
+    results_df = pd.DataFrame(columns=columns)
     beta_v = np.array([beta] * n_nodes)
     gamma_v = np.array([gamma] * n_nodes)
-
-    for t in np.arange(T_max):
-        for node in np.arange(n_nodes):
+    
+    #candidates = []
+    #for u in np.where(scenario['epidemic']['y_observed']>0)[0]:
+    #    candidates += nx.neighbors(scenario['G'], u)
+    candidates = np.arange(n_nodes) #np.unique(candidates)
+    increment = 0
+    thres = compute_threshold(sol, time, scenario, delta = 0.8, min_clip = 1e-1)
+    for time in np.arange(1, T_max):
+        for node in candidates:
+            #print([node, time])
              #### Diffuse procedure from node
-            mock_epidemic = simulate_epidemic(scenario['W'], node, 
+            y_init = np.zeros(n_nodes)
+            y_init[node] = 1
+            mock_epidemic = simulate_epidemic(scenario['W'], 
+                                              y_init, 
                                               beta_v, gamma_v,
-                      steps = 1, 
-                      alpha_fp = 0.1, seed = 1,
-                      min_clip=0)
+                                              steps = time, 
+                                              alpha_fp = 0.1, seed = 1,
+                                              min_clip=0)
             #### Look at the error
-            proposed_diffusion = mock_epidemic['epidemic']['true_p']
-            temp_res = [exp, 
+            proposed_diffusion = mock_epidemic['true_p']
+            temp_res = [exp, node, time, thres, 
                 graph_type, n_nodes,
-                args.alpha_fp,
+                alpha_fp,
                 p, m, scenario['epidemic']['y_true'].sum(),
                 scenario['W'].max(),
-                args.steps, args.n_step_predict,
+                steps, n_step_predict,
                 lambda_best, 
                 scenario['epidemic']['y_observed'].sum(),
                 np.mean(np.abs(sol - proposed_diffusion)),
@@ -168,12 +182,26 @@ for exp in np.arange(100):
                 np.mean(np.abs(scenario['epidemic']['y_observed'] - proposed_diffusion)),
                 np.mean(np.abs(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] > min_clip]),
                 np.mean(np.abs(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] < min_clip]),
+                np.sum(np.square(sol - proposed_diffusion)),
+                np.sum(np.square(sol - proposed_diffusion)[scenario['epidemic']['true_p'] > min_clip]),
+                np.sum(np.square(sol - proposed_diffusion)[scenario['epidemic']['true_p'] < min_clip]),
+                #np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < 0]),
+                np.sum(np.square(scenario['epidemic']['y_observed'] - proposed_diffusion)),
+                np.sum(np.square(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] > min_clip]),
+                np.sum(np.square(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] < min_clip])
                 ]
-
+            results_df.loc[increment] = temp_res
+            increment += 1
     
+    selected = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < thres)[0], ['time', 'node_init']]
+    selected2 = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < thres)[0], ['time', 'node_init']]
+    success.iloc[exp] = [exp,
+                         np.sum(selected.iloc[np.where(selected['time'] == steps)[0]]['node_init']  == ind[0]),
+                         selected.shape[0],
+                         np.sum(selected2.iloc[np.where(selected2['time'] == steps)[0]]['node_init']  == ind[0]),
+                         selected2.shape[0]]
+    success.to_csv('/scratch/midway3/cdonnat/epidemics_2/epidemics/python/experiments/results/adam' +  args.namefile + '.csv', index=False)
 
-    #results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/binarized_new_results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
-    results_df.to_csv('~/Downloads/binarized_new_results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
 
-        
 
+#results_df.loc[increment] = temp_res
