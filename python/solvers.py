@@ -92,6 +92,33 @@ def cvx_solver(y_observed, Gamma, lambda_, p_norm=1):
     return p_opt
 
 
+def cvx_solver_missing(y_observed, index_observed, Gamma, lambda_, p_norm=1):
+    n_nodes = Gamma.shape[1]
+    print('n_nodes = ' + str(n_nodes))
+    # Define the variable
+    p = cp.Variable(n_nodes)
+    
+    # Constraints
+    constraints = [p >= 0, p <= 1]
+    # Define the quadratic loss
+    loss = cp.sum_squares(y_observed[index_observed] - p[index_observed]) / n_nodes
+    
+    # Define the L-1 norm term (assuming Gamma is a numpy array or similar)
+    l1_norm = cp.norm(Gamma @ p, p_norm)
+    
+    # Define the objective
+    objective = cp.Minimize(loss + lambda_ * l1_norm)
+    
+    # Formulate and solve the problem
+    problem = cp.Problem(objective, constraints)
+    problem.solve()
+    
+    # Get the optimal value of p
+    p_opt = p.value
+    return p_opt
+
+
+
 def cgd_solver(y, Gamma, lambda_, eps = 1e-4, max_it = 50000):
     m, p = Gamma.shape
     Q = Gamma @ Gamma.T
