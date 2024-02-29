@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import scipy as sc
@@ -141,23 +141,38 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
                       seed = 1,
                       epsilon=0.01, do_plot = False,
                       min_clip=0):
+    np.random.seed(seed)
+    #nx.random.seed(seed)
     if type_graph == "ER":
-        G = nx.erdos_renyi_graph(n=int(n_nodes), p=p, seed=seed)
+        
+        G = nx.erdos_renyi_graph(n=int(n_nodes), p=p)
     elif type_graph == "2Dgrid":
         G = nx.grid_2d_graph(n=int(np.sqrt(n_nodes)), m=int(np.sqrt(n_nodes)))
     elif type_graph == "expander":
         G = nx.paley_graph(p=n_nodes)
     elif type_graph == "small-world":
-        G = nx.connected_watts_strogatz_graph(n_nodes, k=m, p=p, seed = seed)
+        G = nx.connected_watts_strogatz_graph(n_nodes, k=m, p=p)
     elif type_graph == "pa":
-        G = nx.barabasi_albert_graph(n_nodes, m=m, seed =seed)
+        G = nx.barabasi_albert_graph(n_nodes, m=m)
     elif type_graph == "power_law":
-        G = nx.powerlaw_cluster_graph(n_nodes, m=m, p = p, seed =seed)
+        G = nx.powerlaw_cluster_graph(n_nodes, m=m, p = p)
     elif type_graph == "knn":
         phi = 0.1
         df = generate_graph(n_nodes)
         weights = generate_weights(df, m, phi)
-        G = generate_graph_from_weights(df, weights, n_nodes)
+        G = generate_graph_from_weights(df, weights, n_nodes
+                )
+    elif type_graph == "SBM":
+        sizes = [int(n_nodes/m)] * m
+        p_out = p/20
+        p_in = p
+        Z = []
+        for i in np.arange(m):
+           Z += [i]* int(n_nodes/m)
+        probs = p_out * np.ones ( (m, m)) + (p_in  - p_out ) * np.diag ( np.ones((m)))
+        print([m, seed])
+        print(probs)
+        G =  nx.stochastic_block_model(sizes = sizes, p = probs)
     else:
         print("Type of Graph Not implemented yet")
         return()
@@ -168,17 +183,29 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
     #G = G.subgraph(largest_component)
     n_nodes = nx.number_of_nodes(G)
     #d_max = np.asarray(nx.degree(G))[:,1].mean()
-    d_max = np.asarray(nx.degree(G))[:,1].max()
+    degree = np.asarray(nx.degree(G))[:,1]
+    d_max = degree.max()
     weights = [None] * nx.number_of_edges(G)
-    W_binary = nx.adjacency_matrix(G)
     it = 0
     for (u, v) in G.edges():
-        G[u][v]['weight'] = 1.0/(d_max + epsilon) 
-        weights[it] = 1.0/(d_max + epsilon) #random.uniform(0, 10)  # Random weight between 0 and 10
-        it += 1
+        # if type_graph == "ER":
+        #     G[u][v]['weight'] = p
+        #     weights[it] = p  #random.uniform(0, 10)  # Random weight between 0 and 10
+        # elif type_graph == "SBM":
+        #     Z_u = Z[u]
+        #     Z_v = Z[v]
+        #     G[u][v]['weight'] = probs[Z_u, Z_v]
+        #     weights[it] = probs[Z_u, Z_v]
+        # else:
+            d_u = degree[u]
+            d_v = degree[v]
+            G[u][v]['weight'] = 1./np.max([d_u, d_v])
+            weights[it] = 1./np.max([d_u, d_v])
+            it += 1
     W = nx.adjacency_matrix(G)
-    Gamma = 1.0/(d_max + epsilon) * nx.incidence_matrix(G, oriented=True)
+    Gamma = nx.incidence_matrix(G, oriented=True, weight = 'weight')
     Gamma0 = nx.incidence_matrix(G, oriented=True)
+    print("max of row is" + str(W.sum(0).max() * beta) + ' _ ' +  str(W.sum(1).max() * beta))
     
     beta_v = np.array([beta] * n_nodes)
     gamma_v = np.array([gamma] * n_nodes)
@@ -203,6 +230,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
             nx.draw(G, pos = pos, node_color = epidemic["track_state"][:, i], edge_color='gray' )
             plt.show()
             time.sleep(1)
+    W_binary = nx.adjacency_matrix(G, weight=None)
             
     return({"epidemic" : epidemic,
             "W" : W,
@@ -216,7 +244,9 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
            })
 
 
-def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
+def generate_scenario_with_graph(G, 
+                      graph_params,
+                      beta = 0.9, gamma = 0.1,
                       alpha_fp =0.001, 
                       n_init = 1, steps = 20,
                       seed = 1,
@@ -224,25 +254,37 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
                       min_clip=0):
     
     n_nodes = nx.number_of_nodes(G)
-    d_max = np.asarray(nx.degree(G))[:,1].max()
+    degree = np.asarray(nx.degree(G))[:,1]
+    d_max = degree.max()
     #d_max = np.asarray(nx.degree(G))[:,1].mean()
     weights = [None] * nx.number_of_edges(G)
-    W_binary = nx.adjacency_matrix(G)
+    W_binary = nx.adjacency_matrix(G, weight = None)
     it = 0
     for (u, v) in G.edges():
-        G[u][v]['weight'] = 1.0 /(d_max + epsilon) 
-        weights[it] = 1.0 /(d_max + epsilon) #random.uniform(0, 10)  # Random weight between 0 and 10
+        if graph_params['graph_type'] == "ER":
+            G[u][v]['weight'] = graph_params['p']  
+            weights[it] = graph_params['p']  #random.uniform(0, 10)  # Random weight between 0 and 10
+        elif graph_params['graph_type'] == "SBM":
+            Z_u = graph_params['Z'][u]
+            Z_v = graph_params['Z'][v]
+            G[u][v]['weight'] =graph_params['Omega'][Z_u, Z_v] 
+            weights[it] = graph_params['Omega'][Z_u, Z_v]
+        else:
+            d_u = degree[u]
+            G[u][v]['weight'] = 1./d_u
+            weights[it] = 1./ d_u
         it += 1
     W = nx.adjacency_matrix(G)
-    Gamma = 1.0/(d_max + epsilon) * nx.incidence_matrix(G, oriented=True)
-    
+    Gamma = nx.incidence_matrix(G, oriented=True, weight = 'weight')
+    Gamma0 = nx.incidence_matrix(G, oriented=True)
     beta_v = np.array([beta] * n_nodes)
     gamma_v = np.array([gamma] * n_nodes)
     y_init = np.zeros(n_nodes)
-    ##ind_init = int(np.ceil( np.random.random_sample(n_init) * n_nodes))
-    t = np.argsort(np.array(nx.degree(G))[:,1], )[::-1][1:1000]
-    np.random.shuffle(t)
-    ind_init = t[0:n_init]
+    ind_init = int(np.ceil( np.random.random_sample(n_init) * n_nodes))
+   
+   #t = np.argsort(np.array(nx.degree(G))[:,1], )[::-1][1:1000]
+    #np.random.shuffle(t)
+   # ind_init = t[0:n_init]
     y_init[ind_init] = 1
     if do_plot : 
         pos = nx.kamada_kawai_layout(G)
@@ -263,11 +305,12 @@ def generate_scenario_with_graph(G, beta = 0.9, gamma = 0.1,
                     node_size=20 )
             plt.show()
             time.sleep(1)
-            
+    W_binary = nx.adjacency_matrix(G, weight=None)        
     return({"epidemic" : epidemic,
             "W" : W,
             "W_binary" :W_binary,
             "Gamma": Gamma,
+            "Gamma0": Gamma0,
             "y_init": y_init,
             "beta" : beta,
             "gamma" : gamma

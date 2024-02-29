@@ -101,6 +101,7 @@ def cvx_solver_missing(y_observed, index_observed, Gamma, lambda_, p_norm=1):
     # Constraints
     constraints = [p >= 0, p <= 1]
     # Define the quadratic loss
+    print("len observed " + str(len(y_observed[index_observed])))
     loss = cp.sum_squares(y_observed[index_observed] - p[index_observed]) / n_nodes
     
     # Define the L-1 norm term (assuming Gamma is a numpy array or similar)

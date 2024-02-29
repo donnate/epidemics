@@ -6,24 +6,23 @@ import time
 import numpy as np
 import networkx as nx
 import sys, os
-#sys.path.append('/scratch/midway3/cdonnat/epidemics_2/epidemics/python')
+sys.path.append('/scratch/midway3/cdonnat/epidemics_2/epidemics/python')
 
 from simulate_epidemics import * 
 from solvers import *
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--namefile', type=str, default = "test")
-parser.add_argument('--seed', type=int, default = 0)
-parser.add_argument('--steps', type=int, default=30)
+parser.add_argument('--namefile', type=str)
+parser.add_argument('--seed', type=int)
+parser.add_argument('--steps', type=int, default=40)
 parser.add_argument('--n_step_predict', type=int, default=15)
-parser.add_argument('--beta', type=float, default=0.9)
-parser.add_argument('--gamma', type=float, default=0.1)
+parser.add_argument('--beta', type=float, default=0.99)
+parser.add_argument('--gamma', type=float, default=0.001)
 parser.add_argument('--alpha_fp', type=float, default=0.00)
-parser.add_argument('--prop_missing', type=float, default=0.00)
-parser.add_argument('--graph_type', type=str, default="knn")
+parser.add_argument('--graph_type', type=str, default="ER")
 parser.add_argument('--p', type=float, default=0.1)
-parser.add_argument('--m', type=int, default=5)
+parser.add_argument('--m', type=int, default=3)
 parser.add_argument('--n_nodes', type=int, default=1000)
 parser.add_argument('--min_clip', type=float, default=1e-4)
 args = parser.parse_args()
@@ -39,7 +38,7 @@ beta = args.beta
 gamma = args.gamma
 min_clip = args.min_clip
 alpha_fp = args.alpha_fp
-nb_folds = 2 
+nb_folds = 5 
 lambda_range = np.exp((np.arange(-4, 2, step=0.2)) * np.log(10))
 
 
@@ -58,7 +57,7 @@ columns = ['Experiment', 'Method', 'Time',
             'alpha_fp',
             'gamma', 'beta',
             'p',  'm', 'n_infected', 'w',
-            'steps', 'prop_missing',
+            'steps',
             'n_step_predict',
             'Lambda', 'final_number_infected', 
             'BCE',
@@ -77,13 +76,14 @@ columns = ['Experiment', 'Method', 'Time',
             'bench_Accuracy_true_p_neg',  
             'bench_Accuracy_true_p_pos_l2',
             'bench_Accuracy_true_p_neg_l2',
-            'bench_Accuracy_true__y_l2']
+            'bench_Accuracy_true_y_l2']
 for step in np.arange(n_step_predict):
     columns += ['BCE_' + str(step), 'accuracy_prop_' + str(step), 
-                'Accuracy_true_p_pos_'  + str(step),
-                'Accuracy_true_p_neg_'  + str(step),
+                'Accuracy_true_p_l2_'  + str(step),
+                #'Accuracy_true_p_neg_'  + str(step),
                 'BCE_benchmark_'   + str(step),
-               'accuracy_benchmark_prop_' + str(step)]
+                'accuracy_benchmark_prop_' + str(step),
+                    'accuracy_benchmark_prop_l2'  + str(step)]
 results_df = pd.DataFrame(columns=columns)
 increment = 0
 for exp in np.arange(500):
@@ -93,24 +93,18 @@ for exp in np.arange(500):
                 alpha_fp =alpha_fp, 
                 n_init = n_init, steps = steps, type_graph =graph_type,
                 p=p, m=m,
-                seed = 1000 * args.seed + exp,
+                seed = int(1000 * args.seed + exp),
                 epsilon=0.001, do_plot = False,
-                min_clip=min_clip)
-    
-    mask = np.random.binomial(n=1, p=1-args.prop_missing, size=n_nodes )
-    index_observed = np.where(mask == 1)[0]
-    print(index_observed)
-
+                min_clip=0)
     #print('Infected: ' + str(scenario['epidemic']['y_observed'].sum()))
     for lambda_ in [1e-4, 0.005, 0.001, 0.005, 0.01, 0.05,  0.1, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10, 
                         15, 20, 30, 50, 80, 100]:
     #for lambda_ in [1e-4]:
         start_time = time.time() 
-        res_ssnal = cvx_solver_missing(scenario['epidemic']['y_observed'], 
-                                       index_observed, scenario['Gamma0'].T, 
-                                     lambda_, p_norm=1)
-        res_ssnal = np.clip(res_ssnal, 0, 1).flatten()
+        res_ssnal = ssnal_solver(scenario['epidemic']['y_observed'], 
+                                 scenario['W_binary'], lambda_)
         end_time = time.time() 
+        res_ssnal = res_ssnal[:,0] 
         #res_ssnal[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
         
         ### Propagate solution
@@ -120,8 +114,7 @@ for exp in np.arange(500):
                     args.alpha_fp, args.gamma, args.beta,
                     p, m, scenario['epidemic']['y_true'].sum(),
                     scenario['W'].max(),
-                    args.steps, args.prop_missing,
-                    args.n_step_predict,
+                    args.steps, args.n_step_predict,
                     lambda_, 
                     scenario['epidemic']['y_observed'].sum(),
                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_ssnal),
@@ -185,10 +178,11 @@ for exp in np.arange(500):
             ground_truth[np.where(ground_truth <min_clip)[0]] = 0
             temp_res += [BinaryCrossEntropy(ground_truth, current_p),
                             np.mean(np.abs(current_p  - ground_truth)),
-                            np.mean(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
-                            np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
+                            np.sum(np.square(current_p - ground_truth)),
+                            #np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
                             BinaryCrossEntropy(ground_truth, current_p_observed),
-                            np.mean(np.abs(current_p_observed  - ground_truth))]
+                            np.mean(np.abs(current_p_observed  - ground_truth)),
+                             np.sum(np.square(current_p_observed - ground_truth))]
         
         print("Len temp res" + str(len(temp_res)))
         print("Len columns:" + str(len(columns)))
@@ -200,16 +194,22 @@ for exp in np.arange(500):
 
 
     #### Add the Cross-validation procedure
+    mst = nx.dfs_tree(scenario['G'])
+    folds = {}
     y_folds = np.zeros((n_nodes,nb_folds))
     for k in np.arange(nb_folds):
         y_folds[:, k] = np.random.binomial(n=1, p=scenario['epidemic']['y_observed']/nb_folds)
+    paths = dict(nx.shortest_path_length(mst, source=0))
+    for i in np.arange(nb_folds):
+        folds[i] = [key for key, value in paths.items() if value % nb_folds == i]
     #path = dict(nx.shortest_path_length(mst, source=0))
     #folds = get_folds(mst, path, n, nb_folds=nb_folds,
     #          plot_tree=False)
     ##### Run k-fold crosss validation
     results = np.zeros((len(lambda_range), nb_folds))
     results2 = np.zeros((len(lambda_range), nb_folds))
-    for k in np.arange(nb_folds):
+    for k, j in enumerate(folds.keys()):
+        print(j)
         #fold = folds[j]
         #y_interpolated = copy.deepcopy(scenario['epidemic']['y_observed'])
         #y_interpolated[fold] = 0
@@ -217,21 +217,23 @@ for exp in np.arange(500):
         y_test = y_folds[:, k]
         y_interpolated = ( np.sum(y_folds, 1) - y_folds[:, k]) / (nb_folds-1)
         for kk,lambda_ in enumerate(lambda_range):
-            sol = cvx_solver_missing(y_interpolated, index_observed, scenario['Gamma0'].T, 
-                                     lambda_, p_norm=1)
+            ssnal = SSNAL(gamma=lambda_, verbose=0)
+            res_ssnal = ssnal.fit(X=y_interpolated.reshape((n_nodes,1)),
+                weight_matrix=scenario['W_binary'].todense(), save_centers=True)
+            sol = res_ssnal.centers_.T
             sol = np.clip(sol, 0, 1).flatten()
-            results[kk, k] = BinaryCrossEntropy(y_test[index_observed], sol[index_observed])
-            results2[kk, k] = np.mean(np.square(y_test[index_observed] - sol[index_observed]))
+            results[kk, k] = BinaryCrossEntropy(y_test, sol)
+            results2[kk, k] = np.mean(np.square(y_test - sol))
     results_agg  = np.mean(results, 1)
     results_agg2  = np.mean(results2, 1)
     index_lambda_best = np.argmin(results_agg)
     lambda_best = lambda_range[index_lambda_best]
     index_lambda_best2 = np.argmin(results_agg2)
     lambda_best2 = lambda_range[index_lambda_best2]
-
-    sol = cvx_solver_missing(scenario['epidemic']['y_observed'], 
-                                       index_observed, scenario['Gamma0'].T, 
-                                     lambda_best, p_norm=1)
+    ssnal = SSNAL(gamma=lambda_best, verbose=0)
+    res_ssnal = ssnal.fit(X=scenario['epidemic']['y_observed'].reshape((n_nodes,1)),
+                weight_matrix=scenario['W_binary'].todense(), save_centers=True)
+    sol = res_ssnal.centers_.T
     sol = np.clip(sol, 0, 1).flatten()
     #sol[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
     res_ssnal = sol
@@ -242,7 +244,7 @@ for exp in np.arange(500):
                     args.alpha_fp, args.gamma, args.beta,
                     p, m, scenario['epidemic']['y_true'].sum(),
                     scenario['W'].max(),
-                    args.steps, args.prop_missing, args.n_step_predict,
+                    args.steps, args.n_step_predict,
                     lambda_best, 
                     scenario['epidemic']['y_observed'].sum(),
                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_ssnal),
@@ -306,10 +308,11 @@ for exp in np.arange(500):
         ground_truth[np.where(ground_truth <min_clip)[0]] = 0
         temp_res += [BinaryCrossEntropy(ground_truth, current_p),
                         np.mean(np.abs(current_p  - ground_truth)),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
+                        np.sum(np.square(current_p - ground_truth)),
+                        #np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
                         BinaryCrossEntropy(ground_truth, current_p_observed),
-                        np.mean(np.abs(current_p_observed  - ground_truth))]
+                        np.mean(np.abs(current_p_observed  - ground_truth)),
+                        np.sum(np.square(current_p_observed - ground_truth))]
 
     print("Len temp res" + str(len(temp_res)))
     print("Len columns:" + str(len(columns)))
@@ -319,9 +322,9 @@ for exp in np.arange(500):
 
 
     ssnal = SSNAL(gamma=lambda_best2, verbose=0)
-    sol = cvx_solver_missing(scenario['epidemic']['y_observed'], 
-                                       index_observed, scenario['Gamma0'].T, 
-                                     lambda_best2, p_norm=1)
+    res_ssnal = ssnal.fit(X=scenario['epidemic']['y_observed'].reshape((n_nodes,1)),
+                weight_matrix=scenario['W_binary'].todense(), save_centers=True)
+    sol = res_ssnal.centers_.T
     sol = np.clip(sol, 0, 1).flatten()
     #sol[np.where(scenario['epidemic']['y_observed']  == 1)[0]] = 1
     res_ssnal = sol
@@ -332,7 +335,7 @@ for exp in np.arange(500):
                     args.alpha_fp, args.gamma, args.beta,
                     p, m, scenario['epidemic']['y_true'].sum(),
                     scenario['W'].max(),
-                    args.steps, args.prop_missing, args.n_step_predict,
+                    args.steps, args.n_step_predict,
                     lambda_best2,
                     scenario['epidemic']['y_observed'].sum(),
                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_ssnal),
@@ -396,10 +399,11 @@ for exp in np.arange(500):
         ground_truth[np.where(ground_truth <min_clip)[0]] = 0
         temp_res += [BinaryCrossEntropy(ground_truth, current_p),
                         np.mean(np.abs(current_p  - ground_truth)),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
+                        np.sum(np.square(current_p - ground_truth)),
+                        #np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
                         BinaryCrossEntropy(ground_truth, current_p_observed),
-                        np.mean(np.abs(current_p_observed  - ground_truth))]
+                        np.mean(np.abs(current_p_observed  - ground_truth)),
+                        np.sum(np.square(current_p_observed - ground_truth))]
 
     print("Len temp res" + str(len(temp_res)))
     print("Len columns:" + str(len(columns)))
@@ -408,8 +412,8 @@ for exp in np.arange(500):
 
 
 
-    #results_df.to_csv('/scratch/midway3/cdonnat/epidemics_2/epidemics/python/experiments/results/new_CV' + str(nb_folds) + '_res' +  args.namefile + '.csv', index=False)
-    results_df.to_csv('~/Downloads/binarized_new_results_missing' +  args.namefile + '.csv', index=False)
+    results_df.to_csv('/scratch/midway3/cdonnat/epidemics_2/epidemics/python/experiments/results/binary_new_CV' + str(nb_folds) + '_res' +  args.namefile + '.csv', index=False)
+    #results_df.to_csv('~/Downloads/binarized_new_results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
 
         
 

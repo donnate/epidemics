@@ -7,7 +7,7 @@ import numpy as np
 import networkx as nx
 import sys, os
 
-sys.path.append('/scratch/midway3/cdonnat//epidemics_2/epidemics/python')
+sys.path.append('~/Documents/epidemic_modelling/python')
 from simulate_epidemics import * 
 from solvers import *
 
@@ -24,78 +24,65 @@ parser.add_argument('--graph_type', type=str, default="ER")
 parser.add_argument('--p', type=float, default=0.1)
 parser.add_argument('--m', type=int, default=3)
 parser.add_argument('--n_nodes', type=int, default=1000)
+parser.add_argument('--K', type=int, default=3)
 parser.add_argument('--min_clip', type=float, default=1e-4)
 args = parser.parse_args()
 
 steps = args.steps
 n_step_predict = args.n_step_predict
 n_init = 1
+seed = args.seed
 n_nodes = args.n_nodes
 graph_type = args.graph_type
 p = args.p
 m = args.m
+K = args.K
 beta = args.beta
 gamma = args.gamma
 min_clip = args.min_clip
 alpha_fp = args.alpha_fp
-nb_folds = 5 
-lambda_range = np.exp((np.arange(-4, 2, step=0.2)) * np.log(10))
+nb_folds = 2
+lambda_range = [1e-4, 0.005, 0.001, 0.005, 0.01, 0.05,  0.1, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10, 
+                        15, 20, 30, 50, 80, 100] #np.exp((np.arange(-4, 2, step=0.2)) * np.log(10))
 
 
 
-success = pd.DataFrame(np.zeros((10, 9)),columns= ['exp',
-    'beta', 'gamma', 'm', 'steps', 'beta-ours', 'gamma-ours',
+success = pd.DataFrame(np.zeros((100,17)),columns= ['exp',
+   'm', 'beta', 'gamma', 'steps', 'err-beta-ours', 'err-gamma-ours',
+      'err-beta-naive', 'err-gamma-naive',
+      'err-beta-oracle', 'err-gamma-oracle',
+      'beta-ours', 'gamma-ours',
       'beta-naive', 'gamma-naive',
       'beta-oracle', 'gamma-oracle'])
-K = 10
-for experiment in np.arange(10):
+for experiment_nb in np.arange(100):
     scenario = generate_scenario(n_nodes = n_nodes, 
                                     beta = beta, gamma=gamma,
                 alpha_fp =alpha_fp, 
                 n_init = n_init, steps = steps + K, type_graph =graph_type,
                 p=p, m=m,
-                seed = 1,
+                seed = int(seed * 1000 + experiment_nb),
                 epsilon=0.001, do_plot = False,
                 min_clip=min_clip)
     print('Infected: ' + str(scenario['epidemic']['y_observed'].sum()))
     #### Add the Cross-validation procedure
-    mst = nx.dfs_tree(scenario['G'])
-    folds = {}
-    paths = dict(nx.shortest_path_length(mst, source=0))
-    for i in np.arange(nb_folds):
-        folds[i] = [key for key, value in paths.items() if value % nb_folds == i]
-    path = dict(nx.shortest_path_length(mst, source=0))
-    #folds = get_folds(mst, path, n, nb_folds=nb_folds,
-    #          plot_tree=False)
-    ##### Run k-fold crosss validation
     solution = np.zeros((K, n_nodes))
     for k in np.arange(K):
+        print("k = " + str(k))
         results = np.zeros((len(lambda_range), nb_folds))
-        for it_j, j in enumerate(folds.keys()):
-            print(j)
-            fold = folds[j]
-            y_interpolated = copy.deepcopy(scenario['epidemic']['realized_state'][:, steps + k])
-            y_interpolated[fold] = 0
-            y_test =  scenario['epidemic']['y_observed'][fold]
+        y_folds = np.zeros((n_nodes,nb_folds))
+        for fold in np.arange(nb_folds):
+            y_folds[:, fold] = np.random.binomial(n=1, p=scenario['epidemic']['realized_state'][:,steps + k].reshape((n_nodes,))/nb_folds)
+        for fold in np.arange(nb_folds):
+            y_test = y_folds[:, fold]
+            y_interpolated = ( np.sum(y_folds, 1) - y_folds[:, fold]) / (nb_folds-1)
             for kk,lambda_ in enumerate(lambda_range):
                 ssnal = SSNAL(gamma=lambda_, verbose=0)
                 res_ssnal = ssnal.fit(X=y_interpolated.reshape((n_nodes,1)),
                     weight_matrix=scenario['W'].todense(), save_centers=True)
                 sol = res_ssnal.centers_.T
                 sol = np.clip(sol, 0, 1).flatten()
-                diff = np.abs(sol[fold] -  y_test)
-                if np.sum(y_test) > 0:
-                    diff_pos =  np.mean(diff[y_test >0])
-                else:
-                    diff_pos =  np.mean(diff)
-                diff_neg =  np.mean(diff[y_test == 0 ])
-                err = diff_pos + diff_neg
-                #err = 2./ (1./diff_pos + 1./diff_neg)
-                #err = diff_pos  ### focus solely on the positives
-                #err = np.mean(np.abs(y_test-sol[fold]))
-                #err = roc_auc_score(y_test, sol[fold], average='weighted')
-                #err = auc(fpr, tpr)
-                results[kk, it_j] = err
+                results[kk, fold] = np.mean(np.square((y_test, sol)))
+        
         results_agg  = np.mean(results, 1)
         index_lambda_best = np.argmin(results_agg)
         lambda_best = lambda_range[index_lambda_best]
@@ -108,9 +95,9 @@ for experiment in np.arange(10):
         solution[k,:] =  sol_temp
         ### Propagate solution
     ###
-    Delta_p = np.zeros((K, 1))
-    Phi = np.zeros((K, 2))
-    for k in np.arange(K):
+    Delta_p = np.zeros((K-1, 1))
+    Phi = np.zeros((K-1, 2))
+    for k in np.arange(K-1):
         Delta_p[k,:] =  np.sum(solution[k+1,:] - solution[k,:])
         Phi[k,0] = np.sum(np.diag(np.array([1] * n_nodes) - solution[k,:]).dot(scenario['W'] .dot(solution[k,:]))) 
         Phi[k,1] = -np.sum(solution[k,:]) 
@@ -118,32 +105,51 @@ for experiment in np.arange(10):
     error_beta_ours = estimated_params[0] - beta
     error_gamma_ours = estimated_params[1] - gamma
 
-    Delta_p = np.zeros((K, 1))
-    Phi = np.zeros((K, 2))
-    for k in np.arange(K):
-        Delta_p[k,:] =    np.sum(scenario['epidemic']['realized_state'][k+1,:] - scenario['epidemic']['realized_state'][k,:])
-        Phi[k,0] = np.sum(np.diag(np.array([1] * n_nodes) - scenario['epidemic']['realized_state'][:,k]).dot(scenario['W'] .dot(scenario['epidemic']['realized_state'][:,k]))) 
-        Phi[k,1] = -np.sum(scenario['epidemic']['realized_state'][:,k]) 
-    estimated_params = np.linalg.pinv(Phi).dot(Delta_p)
-    error_beta_naive= estimated_params[0] - beta
-    error_gamma_naive = estimated_params[1] - gamma
+    naive_solution  = scenario['epidemic']['realized_state'][:,(steps):(steps + K)].T
+    Delta_p = np.zeros((K-1, 1))
+    Phi = np.zeros((K-1, 2))
+    naive_solution  = scenario['epidemic']['realized_state'][:,(steps):(steps + K)].T
+    for k in np.arange(K-1):
+        Delta_p[k,:] =  np.sum(naive_solution[k+1,:] - naive_solution[k,:])
+        Phi[k,0] = np.sum(np.diag(np.array([1] * n_nodes) - naive_solution[k,:]).dot(scenario['W'] .dot(naive_solution[k,:])))
+        Phi[k,1] = -np.sum(naive_solution[k,:])
+    estimated_params_naive = np.linalg.pinv(Phi).dot(Delta_p)
+    
+    error_beta_naive= estimated_params_naive[0] - beta
+    error_gamma_naive = estimated_params_naive[1] - gamma
 
 
-    Delta_p = np.zeros((K, 1))
-    Phi = np.zeros((K, 2))
-    for k in np.arange(K):
-        Delta_p[k,:] =  np.sum(scenario['epidemic']['track_state'][k+1,:] - scenario['epidemic']['track_state'][k,:])
-        Phi[k,0] = np.sum(np.diag(np.array([1] * n_nodes) - scenario['epidemic']['track_state'][:,k]).dot(scenario['W'] .dot(scenario['epidemic']['track_state'][:,k]))) 
-        Phi[k,1] = -np.sum(scenario['epidemic']['track_state'][:,k]) 
-    estimated_params = np.linalg.pinv(Phi).dot(Delta_p)
-    error_beta_oracle = estimated_params[0] - beta
-    error_gamma_oracle = estimated_params[1] - gamma
-    success.iloc[experiment] = [experiment, m, beta, gamma, steps,
-                        error_beta_ours, error_gamma_ours,
-                        error_beta_naive, error_gamma_naive,
-                        error_beta_oracle, error_gamma_oracle
+    oracle_solution  = scenario['epidemic']['track_state'][:,(steps):(steps + K)].T
+    Delta_p = np.zeros((K-1, 1))
+    Phi = np.zeros((K-1, 2))
+    for k in np.arange(K-1):
+        Delta_p[k,:] =  np.sum(oracle_solution[k+1,:] - oracle_solution[k,:])
+        Phi[k,0] = np.sum(np.diag(np.array([1] * n_nodes) - oracle_solution[k,:]).dot(scenario['W'] .dot(oracle_solution[k,:])))
+        Phi[k,1] = -np.sum(oracle_solution[k,:])
+    estimated_params_oracle = np.linalg.pinv(Phi).dot(Delta_p)
+    
+    error_beta_oracle = estimated_params_oracle[0] - beta
+    error_gamma_oracle = estimated_params_oracle[1] - gamma
+    print(error_beta_ours, error_gamma_ours)
+    print(error_beta_naive, error_gamma_naive)
+    print(error_beta_oracle, error_gamma_oracle)
+    print([experiment_nb, m, beta, gamma, steps,
+                        error_beta_ours[0], error_gamma_ours[0],
+                        error_beta_naive[0], error_gamma_naive[0],
+                        error_beta_oracle[0], error_gamma_oracle[0],
+                        estimated_params[0][0], estimated_params[1][0],
+                        estimated_params_naive[0][0], estimated_params_naive[1][0],
+                        estimated_params_oracle[0][0], estimated_params_oracle[1][0]
+                        ])
+    success.iloc[experiment_nb] = [experiment_nb, m, beta, gamma, steps,
+                        error_beta_ours[0], error_gamma_ours[0],
+                        error_beta_naive[0], error_gamma_naive[0],
+                        error_beta_oracle[0], error_gamma_oracle[0],
+                        estimated_params[0][0], estimated_params[1][0],
+                        estimated_params_naive[0][0], estimated_params_naive[1][0],
+                        estimated_params_oracle[0][0], estimated_params_oracle[1][0]
                         ]
-    success.to_csv('/scratch/midway3/cdonnat/epidemics_2/epidemics/python/experiments/results/param' +  args.namefile + '.csv', index=False)
+    success.to_csv('~/Documents/epidemic_modelling/python/experiments/results/param' +  args.namefile + '.csv', index=False)
 
 
 

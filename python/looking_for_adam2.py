@@ -40,7 +40,7 @@ min_clip = args.min_clip
 min_clip_thres = 0.1
 alpha_fp = args.alpha_fp
 nb_folds = 5
-T_max = 50
+T_max = 30
 lambda_range = np.exp((np.arange(-4, 2, step=0.2)) * np.log(10))
 
 def compute_threshold(sol, rho,
@@ -60,15 +60,8 @@ def compute_threshold(sol, rho,
                                                                          Delta_p_0 *  2 * np.sqrt(2) * rho * np.log(4 * n_nodes**2/delta)/kappa**2])  + 2 * p_0/n_nodes * np.log(4/delta)**2 
     return(thres)
 
-success = pd.DataFrame(np.zeros((1000, 45)),columns= ['exp', 'm',
-    'beta', 'gamma', 'steps', 'thresh10',
-                'thresh20',
-                'thresh30',
-                'thresh40',
-                'thresh50' ,
-                'thresh70',
-                'thresh90',
-                'thresh95' ,
+success = pd.DataFrame(np.zeros((1000, 37)),columns= ['exp', 'm',
+    'beta', 'gamma', 'steps', 
     'success-ours10', 'length-ours10', 'success-naive10', 'length-naive10',
     'success-ours20', 'length-ours20', 'success-naive20', 'length-naive20',
     'success-ours30', 'length-ours30', 'success-naive30', 'length-naive30',
@@ -132,43 +125,31 @@ for exp in np.arange(0, 1000):
     print([np.max(sol), np.min(sol)])
     #sol[sol<1e-1] = 0
 
-    columns = ['Experiment', 'node_init', 'time',
-               'graph_type',
-                'n_nodes',
-                'alpha_fp',
-                'p',  'm', 'n_infected', 'w',
-                'steps',
-                'n_step_predict',
-                'Lambda', 'final_number_infected',
-                'l1_sol_minus_proposed',
-                'l1_sol_minus_proposed_pos',
-                'l1_sol_minus_proposed_neg',
-                'l1_obs_minus_proposed',
-                'l1_obs_minus_proposed_pos',
-                'l1_obs_minus_proposed_neg',
-                'l2_sol_minus_proposed',
-                'l2_sol_minus_proposed_pos',
-                'l2_sol_minus_proposed_neg',
-                'l2_obs_minus_proposed',
-                'l2_obs_minus_proposed_pos',
-                'l2_obs_minus_proposed_neg',
-                'thresh10',
-                'thresh20',
-                'thresh30',
-                'thresh40',
-                'thresh50',
-                'thresh70',
-                'thresh90',
-                'thresh95'
-              ]
+    columns = ['node_init', 'time',
+            'thresh10',
+            'thresh20',
+            'thresh30',
+            'thresh40',
+            'thresh50',
+            'thresh70',
+            'thresh90',
+            'thresh95',
+            'thresh10_obs',
+            'thresh20_obs',
+            'thresh30_obs',
+            'thresh40_obs',
+            'thresh50_obs',
+            'thresh70_obs',
+            'thresh90_obs',
+            'thresh95_obs'
+          ]
     results_df = pd.DataFrame(columns=columns)
     beta_v = np.array([beta] * n_nodes)
     gamma_v = np.array([gamma] * n_nodes)
     candidates = np.arange(n_nodes) #np.unique(candidates)
     increment = 0
-    for time in np.arange(1, T_max):
+    for time in np.arange(1, T_max + 1):
         for node in candidates:
-            print([node, time])
              #### Diffuse procedure from node
             y_init = np.zeros(n_nodes)
             y_init[node] = 1
@@ -180,85 +161,67 @@ for exp in np.arange(0, 1000):
                                               min_clip=0)
             #### Look at the error
             proposed_diffusion = mock_epidemic['true_p']
-            proposed_diffusion[proposed_diffusion < 5 * 1e-2] = 0 
-            T = np.max([(scenario['Gamma'].T.dot(proposed_diffusion) > min_clip_thres).sum(), 1])
-            thres10 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.1),
-                              compute_threshold(sol, rho, scenario, delta = 0.1)])
-            thres20 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.2),
-                               compute_threshold(sol, rho, scenario, delta = 0.2)])
-            thres30 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.3),
-                               compute_threshold(sol, rho, scenario, delta = 0.3)])
-            thres40 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.4),
-                               compute_threshold(sol, rho, scenario, delta = 0.4)])
-            thres50 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.5),
-                               compute_threshold(sol, rho, scenario, delta = 0.5)])
-            thres70 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.7),
-                               compute_threshold(sol, rho, scenario, delta = 0.7)])
-            thres90 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.9),
-                               compute_threshold(sol, rho, scenario, delta = 0.9)])
-            thres95 = np.min([compute_threshold(proposed_diffusion, rho, scenario, delta = 0.95),
-                               compute_threshold(sol, rho, scenario, delta = 0.95)])
-            temp_res = [exp, node, time, 
-                graph_type, n_nodes,
-                alpha_fp,
-                p, m, scenario['epidemic']['y_true'].sum(),
-                scenario['W'].max(),
-                steps, n_step_predict,
-                lambda_best, 
-                scenario['epidemic']['y_observed'].sum(),
-                np.mean(np.abs(sol - proposed_diffusion)),
-                np.mean(np.abs(sol - proposed_diffusion)[scenario['epidemic']['true_p'] > min_clip]),
-                np.mean(np.abs(sol - proposed_diffusion)[scenario['epidemic']['true_p'] < min_clip]),
-                #np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < 0]),
-                np.mean(np.abs(scenario['epidemic']['y_observed'] - proposed_diffusion)),
-                np.mean(np.abs(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] > min_clip]),
-                np.mean(np.abs(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] < min_clip]),
-                np.sum(np.square(sol - proposed_diffusion)),
-                np.sum(np.square(sol - proposed_diffusion)[scenario['epidemic']['true_p'] > min_clip]),
-                np.sum(np.square(sol - proposed_diffusion)[scenario['epidemic']['true_p'] < min_clip]),
-                #np.mean(np.abs(sol - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < 0]),
-                np.sum(np.square(scenario['epidemic']['y_observed'] - proposed_diffusion)),
-                np.sum(np.square(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] > min_clip]),
-                np.sum(np.square(scenario['epidemic']['y_observed'] - proposed_diffusion)[scenario['epidemic']['true_p'] < min_clip]),
-                thres10, thres20, thres30, thres40, thres50, thres70, thres90, thres95
-                ]
-            print( [time, node, min_clip_thres, 
-                np.sum(np.square(sol - proposed_diffusion)),
-                np.sum(np.square(scenario['epidemic']['y_observed'] - proposed_diffusion)),
-                thres10, thres20, thres30, thres40, thres50
-                ])
+            #proposed_diffusion[proposed_diffusion < 1e-2] = 0 
+            thres10 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.1) /n_nodes )
+            thres20 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.2) /n_nodes )
+            thres30 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.3) /n_nodes )
+            thres40 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.4) /n_nodes )
+            thres50 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.5)  /n_nodes)
+            thres70 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.7) /n_nodes )
+            thres90 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.9)  /n_nodes)
+            thres95 = np.sqrt(2 * np.sum(proposed_diffusion >0) * np.log(4/0.95)  /n_nodes)
+            
+            x = np.sqrt(np.sum(np.square(proposed_diffusion - sol))) /np.sqrt(n_nodes)
+            a = np.sqrt(2) * rho * np.log(4 * n_nodes**2 /0.1) /(n_nodes) * (np.sum(np.abs(scenario['Gamma0'].T.dot(proposed_diffusion))) -( np.sum(np.abs(scenario['Gamma0'].T.dot(sol)))))
+
+            x_obs = np.sqrt(np.sum(np.square(proposed_diffusion - scenario['epidemic']['y_observed'])))
+            a_obs = np.sqrt(2) * rho * np.log(4 * n_nodes**2 /0.1) * (np.sum(np.abs(scenario['Gamma0'].T.dot(proposed_diffusion))) -( np.sum(np.abs(scenario['Gamma0'].T.dot(scenario['epidemic']['y_observed'])))))
+            results_df.loc[increment] = [node, time, 
+                                         x * (x -2 * thres10) < a,
+                                         x * (x -2 * thres20) < a,
+                                         x * (x -2 * thres30) < a,
+                                         x * (x -2 * thres40) < a,
+                                         x * (x -2 * thres50) < a,
+                                         x * (x -2 * thres70) < a,
+                                        x * (x -2 * thres90) < a,
+                                        x * (x -2 * thres95) < a,
+                                        x_obs * (x_obs -2 * thres10) < a_obs,
+                                        x_obs * (x_obs -2 * thres20) < a_obs,
+                                        x_obs * (x_obs -2 * thres30) < a_obs,
+                                        x_obs * (x_obs -2 * thres40) < a_obs,
+                                        x_obs * (x_obs -2 * thres50) < a_obs,
+                                        x_obs * (x_obs -2 * thres70) < a_obs,
+                                        x_obs * (x_obs -2 * thres90) < a_obs,
+                                        x_obs * (x_obs -2 * thres95) < a_obs
+            ]
+            
             #print(len(temp_res))
+
+            print([node, time, x, x * (x -2 * thres10),  a, x * (x -2 * thres10) < a
+            ])
             #print(results_df.shape)
-            results_df.loc[increment] = temp_res
             increment += 1
-    results_df.to_csv('~/Documents/epidemic_modelling/python/experiments/results/intermediary_adam' +  args.namefile + '.csv', index=False)
-    selected10 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh10'])[0], ['time', 'node_init']]
-    selected10_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh10'])[0], ['time', 'node_init']]
-    selected20 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh20'])[0], ['time', 'node_init']]
-    selected20_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh20'])[0], ['time', 'node_init']]
-    selected30 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh30'])[0], ['time', 'node_init']]
-    selected30_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh30'])[0], ['time', 'node_init']]
-    selected40 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh40'])[0], ['time', 'node_init']]
-    selected40_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh40'])[0], ['time', 'node_init']]
-    selected50 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh50'])[0], ['time', 'node_init']]
-    selected50_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh50'])[0], ['time', 'node_init']]
-    selected70 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh70'])[0], ['time', 'node_init']]
-    selected70_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh70'])[0], ['time', 'node_init']]
-    selected90 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh90'])[0], ['time', 'node_init']]
-    selected90_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh90'])[0], ['time', 'node_init']]
-    selected95 = results_df.loc[np.where(results_df['l2_sol_minus_proposed'] < results_df['thresh95'])[0], ['time', 'node_init']]
-    selected95_obs = results_df.loc[np.where(results_df['l2_obs_minus_proposed'] < results_df['thresh95'])[0], ['time', 'node_init']]
+    #results_df.to_csv('~/Documents/epidemic_modelling/python/experiments/results/intermediary_adam' +  args.namefile + '.csv', index=False)
+    selected10 = results_df.loc[np.where(results_df['thresh10'])[0], ['time', 'node_init']]
+    selected10_obs =results_df.loc[np.where(results_df['thresh10_obs'])[0], ['time', 'node_init']]
+    selected20 = results_df.loc[np.where(results_df['thresh20'])[0], ['time', 'node_init']]
+    selected20_obs =results_df.loc[np.where(results_df['thresh20_obs'])[0], ['time', 'node_init']]
+    selected30 = results_df.loc[np.where(results_df['thresh30'])[0], ['time', 'node_init']]
+    selected30_obs =results_df.loc[np.where(results_df['thresh30_obs'])[0], ['time', 'node_init']]
+    selected40 = results_df.loc[np.where(results_df['thresh40'])[0], ['time', 'node_init']]
+    selected40_obs =results_df.loc[np.where(results_df['thresh40_obs'])[0], ['time', 'node_init']]
+    selected50 = results_df.loc[np.where(results_df['thresh50'])[0], ['time', 'node_init']]
+    selected50_obs =results_df.loc[np.where(results_df['thresh50_obs'])[0], ['time', 'node_init']]
+    selected70 = results_df.loc[np.where(results_df['thresh70'])[0], ['time', 'node_init']]
+    selected70_obs =results_df.loc[np.where(results_df['thresh70_obs'])[0], ['time', 'node_init']]
+    selected90 = results_df.loc[np.where(results_df['thresh90'])[0], ['time', 'node_init']]
+    selected90_obs =results_df.loc[np.where(results_df['thresh90_obs'])[0], ['time', 'node_init']]
+    selected95 = results_df.loc[np.where(results_df['thresh95'])[0], ['time', 'node_init']]
+    selected95_obs =results_df.loc[np.where(results_df['thresh95_obs'])[0], ['time', 'node_init']]
+
     ind = np.where(scenario['y_init'] == 1)[0]
     
     success.iloc[exp] = [exp, m, beta, gamma, steps,
-                        np.mean(results_df['thresh10']),
-                        np.mean(results_df['thresh20']),
-                        np.mean(results_df['thresh30']),
-                        np.mean(results_df['thresh40']),
-                        np.mean(results_df['thresh50']),
-                        np.mean(results_df['thresh70']),
-                        np.mean(results_df['thresh90']),
-                        np.mean(results_df['thresh95']),
                          np.sum(selected10.iloc[np.where(selected10['time'] == steps)[0]]['node_init']  == ind[0]),
                          selected10.shape[0]/results_df.shape[0],
                          np.sum(selected10_obs.iloc[np.where(selected10_obs['time'] == steps)[0]]['node_init']  == ind[0]),

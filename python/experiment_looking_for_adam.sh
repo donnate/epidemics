@@ -15,7 +15,7 @@ echo "My SLURM_ARRAY_JOB_ID: " $SLURM_ARRAY_JOB_ID
 job_id=$SLURM_ARRAY_JOB_ID
 result_file="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "result file is ${result_file}"
-cd $SCRATCH/$USER/epidemics/python
+cd $SCRATCH/$USER/epidemics_2/epidemics/python
 
 module load gsl
 module load gcc

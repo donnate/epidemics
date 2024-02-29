@@ -6,7 +6,7 @@ import time
 import numpy as np
 import networkx as nx
 import sys, os
-#sys.path.append('/scratch/midway3/cdonnat/epidemics_2/epidemics/python')
+sys.path.append('/scratch/midway3/cdonnat/epidemics_2/epidemics/python')
 
 from simulate_epidemics import * 
 from solvers import *
@@ -15,15 +15,15 @@ from solvers import *
 parser = argparse.ArgumentParser()
 parser.add_argument('--namefile', type=str, default = "test")
 parser.add_argument('--seed', type=int, default = 0)
-parser.add_argument('--steps', type=int, default=30)
+parser.add_argument('--steps', type=int, default=40)
 parser.add_argument('--n_step_predict', type=int, default=15)
-parser.add_argument('--beta', type=float, default=0.9)
-parser.add_argument('--gamma', type=float, default=0.1)
+parser.add_argument('--beta', type=float, default=0.99)
+parser.add_argument('--gamma', type=float, default=0.001)
 parser.add_argument('--alpha_fp', type=float, default=0.00)
 parser.add_argument('--prop_missing', type=float, default=0.00)
-parser.add_argument('--graph_type', type=str, default="knn")
+parser.add_argument('--graph_type', type=str, default="ER")
 parser.add_argument('--p', type=float, default=0.1)
-parser.add_argument('--m', type=int, default=5)
+parser.add_argument('--m', type=int, default=3)
 parser.add_argument('--n_nodes', type=int, default=1000)
 parser.add_argument('--min_clip', type=float, default=1e-4)
 args = parser.parse_args()
@@ -99,7 +99,6 @@ for exp in np.arange(500):
     
     mask = np.random.binomial(n=1, p=1-args.prop_missing, size=n_nodes )
     index_observed = np.where(mask == 1)[0]
-    print(index_observed)
 
     #print('Infected: ' + str(scenario['epidemic']['y_observed'].sum()))
     for lambda_ in [1e-4, 0.005, 0.001, 0.005, 0.01, 0.05,  0.1, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10, 
@@ -409,7 +408,7 @@ for exp in np.arange(500):
 
 
     #results_df.to_csv('/scratch/midway3/cdonnat/epidemics_2/epidemics/python/experiments/results/new_CV' + str(nb_folds) + '_res' +  args.namefile + '.csv', index=False)
-    results_df.to_csv('~/Downloads/binarized_new_results_missing' +  args.namefile + '.csv', index=False)
+    results_df.to_csv('/scratch/midway3/cdonnat/epidemics_2/epidemics/python/experiments/results/binarized_new_results_missing' +  args.namefile + '.csv', index=False)
 
         
 

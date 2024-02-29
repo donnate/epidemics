@@ -53,7 +53,8 @@ columns = ['Experiment', 'Method', 'Time',
             'Accuracy_true_p', 'Accuracy_true_y',
             'Accuracy_true_p_pos',
             'Accuracy_true_p_neg',  
-            'bench_Accuracy_true_p', 'bench_Accuracy_true_y']
+            'bench_Accuracy_true_p',
+            'bench_Accuracy_true_y']
 for step in np.arange(n_step_predict):
     columns += ['accuracy_prop_' + str(step), 
                 'Accuracy_true_p_pos_'  + str(step),
