@@ -105,8 +105,9 @@ for exp in np.arange(500):
 
     #### Add the Cross-validation procedure
     y_folds = np.zeros((n_nodes,nb_folds))
+    Z = np.random.binomial(n=1, p=0.5, size=n_nodes)
     for k in np.arange(nb_folds):
-        y_folds[:, k] = np.random.binomial(n=1, p=scenario['epidemic']['y_observed']/nb_folds)
+        #y_folds[:, k] = np.random.binomial(n=1, p=scenario['epidemic']['y_observed']/nb_folds)
     #path = dict(nx.shortest_path_length(mst, source=0))
     #folds = get_folds(mst, path, n, nb_folds=nb_folds,
     #          plot_tree=False)

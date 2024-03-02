@@ -40,7 +40,8 @@ gamma = args.gamma
 min_clip = args.min_clip
 alpha_fp = args.alpha_fp
 nb_folds = 2 
-lambda_range = np.exp((np.arange(-4, 2, step=0.2)) * np.log(10))
+lambda_range =  [1e-4, 0.005, 0.001, 0.005, 0.01, 0.05,  0.1, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10, 
+                        15, 20, 30, 50, 80, 100]
 
 
 
@@ -77,13 +78,19 @@ columns = ['Experiment', 'Method', 'Time',
             'bench_Accuracy_true_p_neg',  
             'bench_Accuracy_true_p_pos_l2',
             'bench_Accuracy_true_p_neg_l2',
-            'bench_Accuracy_true__y_l2']
+            'bench_Accuracy_true__y_l2',
+            'size_epidemic',
+            'estimated_size_epidemic',
+            'estimated_size_epidemic_bench']
 for step in np.arange(n_step_predict):
     columns += ['BCE_' + str(step), 'accuracy_prop_' + str(step), 
                 'Accuracy_true_p_pos_'  + str(step),
                 'Accuracy_true_p_neg_'  + str(step),
                 'BCE_benchmark_'   + str(step),
-               'accuracy_benchmark_prop_' + str(step)]
+               'accuracy_benchmark_prop_' + str(step),
+               'size_epidemic'+ str(step),
+               'estimated_size_epidemic'+ str(step),
+                'estimated_size_epidemic_bench'+ str(step)]
 results_df = pd.DataFrame(columns=columns)
 increment = 0
 for exp in np.arange(500):
@@ -102,9 +109,17 @@ for exp in np.arange(500):
     print(index_observed)
 
     #print('Infected: ' + str(scenario['epidemic']['y_observed'].sum()))
-    for lambda_ in [1e-4, 0.005, 0.001, 0.005, 0.01, 0.05,  0.1, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10, 
-                        15, 20, 30, 50, 80, 100]:
-    #for lambda_ in [1e-4]:
+
+    res_naive = scenario['epidemic']['y_observed']
+    for i in index_observed:
+        neighbors = list(nx.neighbors(scenario['G'], n=i))
+        neighbors = set(neighbors) - set(index_observed)
+        if len(neighbors)>0:
+            res_naive[i] = np.mean(scenario['epidemic']['y_observed'][neighbors])
+        else:
+            res_naive[i] = 0
+
+    for lambda_ in lambda_range:
         start_time = time.time() 
         res_ssnal = cvx_solver_missing(scenario['epidemic']['y_observed'], 
                                        index_observed, scenario['Gamma0'].T, 
@@ -125,22 +140,25 @@ for exp in np.arange(500):
                     lambda_, 
                     scenario['epidemic']['y_observed'].sum(),
                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_ssnal),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])),
-                    np.mean(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                     BinaryCrossEntropy(scenario['epidemic']['true_p'], scenario['epidemic']['y_observed'] ),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                    np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true'])),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true']))
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.sum(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_naive ),
+                    np.sum(np.abs(res_naive- scenario['epidemic']['true_p'])),
+                    np.sum(np.square(res_naive - scenario['epidemic']['true_p'])),
+                    np.sum(np.abs(res_naive  - scenario['epidemic']['y_true'])),
+                    np.sum(np.abs(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.abs(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.square(res_naive- scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_naive  - scenario['epidemic']['y_true'])),
+                    scenario['epidemic']['y_true'].sum(),
+                    np.sum(res_ssnal),
+                    np.sum(res_naive)
                     ]
         current_p = res_ssnal
         current_p[np.where(current_p <min_clip)[0]] = 0
@@ -184,11 +202,14 @@ for exp in np.arange(500):
             ground_truth = np.asarray(ground_truth)
             ground_truth[np.where(ground_truth <min_clip)[0]] = 0
             temp_res += [BinaryCrossEntropy(ground_truth, current_p),
-                            np.mean(np.abs(current_p  - ground_truth)),
-                            np.mean(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
-                            np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
+                            np.sum(np.abs(current_p  - ground_truth)),
+                            np.sum(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
+                            np.sum(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
                             BinaryCrossEntropy(ground_truth, current_p_observed),
-                            np.mean(np.abs(current_p_observed  - ground_truth))]
+                            np.sum(np.abs(current_p_observed  - ground_truth)),
+                            np.sum(ground_truth),
+                            np.sum(current_p),
+                            np.sum(current_p_observed)]
         
         print("Len temp res" + str(len(temp_res)))
         print("Len columns:" + str(len(columns)))
@@ -246,22 +267,25 @@ for exp in np.arange(500):
                     lambda_best, 
                     scenario['epidemic']['y_observed'].sum(),
                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_ssnal),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])),
-                    np.mean(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    BinaryCrossEntropy(scenario['epidemic']['true_p'], scenario['epidemic']['y_observed'] ),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                    np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true'])),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true']))
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.sum(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_naive ),
+                    np.sum(np.abs(res_naive- scenario['epidemic']['true_p'])),
+                    np.sum(np.square(res_naive - scenario['epidemic']['true_p'])),
+                    np.sum(np.abs(res_naive  - scenario['epidemic']['y_true'])),
+                    np.sum(np.abs(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.abs(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.square(res_naive- scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_naive  - scenario['epidemic']['y_true'])),
+                    scenario['epidemic']['y_true'].sum(),
+                    np.sum(res_ssnal),
+                    np.sum(res_naive)
                     ]
     current_p = res_ssnal
     current_p[np.where(current_p <min_clip)[0]] = 0
@@ -305,11 +329,14 @@ for exp in np.arange(500):
         ground_truth = np.asarray(ground_truth)
         ground_truth[np.where(ground_truth <min_clip)[0]] = 0
         temp_res += [BinaryCrossEntropy(ground_truth, current_p),
-                        np.mean(np.abs(current_p  - ground_truth)),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
+                        np.sum(np.abs(current_p  - ground_truth)),
+                        np.sum(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
+                        np.sum(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
                         BinaryCrossEntropy(ground_truth, current_p_observed),
-                        np.mean(np.abs(current_p_observed  - ground_truth))]
+                        np.sum(np.abs(current_p_observed  - ground_truth)),
+                        np.sum(ground_truth),
+                        np.sum(current_p),
+                        np.sum(current_p_observed)]
 
     print("Len temp res" + str(len(temp_res)))
     print("Len columns:" + str(len(columns)))
@@ -336,22 +363,25 @@ for exp in np.arange(500):
                     lambda_best2,
                     scenario['epidemic']['y_observed'].sum(),
                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_ssnal),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])),
-                    np.mean(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    BinaryCrossEntropy(scenario['epidemic']['true_p'], scenario['epidemic']['y_observed'] ),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])),
-                    np.mean(np.abs(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true'])),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.abs(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed'] - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
-                    np.mean(np.square(scenario['epidemic']['y_observed']  - scenario['epidemic']['y_true']))
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])),
+                    np.sum(np.abs(res_ssnal  - scenario['epidemic']['y_true'])),
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.abs(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.square(res_ssnal - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                     BinaryCrossEntropy(scenario['epidemic']['true_p'], res_naive ),
+                    np.sum(np.abs(res_naive- scenario['epidemic']['true_p'])),
+                    np.sum(np.square(res_naive - scenario['epidemic']['true_p'])),
+                    np.sum(np.abs(res_naive  - scenario['epidemic']['y_true'])),
+                    np.sum(np.abs(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.abs(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_naive - scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] > min_clip]),
+                    np.sum(np.square(res_naive- scenario['epidemic']['true_p'])[scenario['epidemic']['true_p'] < min_clip]),
+                    np.sum(np.square(res_naive  - scenario['epidemic']['y_true'])),
+                    scenario['epidemic']['y_true'].sum(),
+                    np.sum(res_ssnal),
+                    np.sum(res_naive)
                     ]
     current_p = res_ssnal
     current_p[np.where(current_p <min_clip)[0]] = 0
@@ -395,11 +425,14 @@ for exp in np.arange(500):
         ground_truth = np.asarray(ground_truth)
         ground_truth[np.where(ground_truth <min_clip)[0]] = 0
         temp_res += [BinaryCrossEntropy(ground_truth, current_p),
-                        np.mean(np.abs(current_p  - ground_truth)),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
-                        np.mean(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
+                        np.sum(np.abs(current_p  - ground_truth)),
+                        np.sum(np.abs(current_p - ground_truth)[ground_truth > min_clip]),
+                        np.sum(np.abs(current_p - ground_truth)[ground_truth< min_clip]),
                         BinaryCrossEntropy(ground_truth, current_p_observed),
-                        np.mean(np.abs(current_p_observed  - ground_truth))]
+                        np.sum(np.abs(current_p_observed  - ground_truth)),
+                        np.sum(ground_truth),
+                        np.sum(current_p),
+                        np.sum(current_p_observed)]
 
     print("Len temp res" + str(len(temp_res)))
     print("Len columns:" + str(len(columns)))
