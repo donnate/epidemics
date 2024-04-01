@@ -27,10 +27,10 @@ results_df = pd.DataFrame(columns=columns)
 parser = argparse.ArgumentParser()
 parser.add_argument('--namefile', type=str)
 parser.add_argument('--seed', type=int)
-parser.add_argument('--steps', type=int, default=60)
+parser.add_argument('--steps', type=int, default=20)
 parser.add_argument('--n_step_predict', type=int, default=15)
-parser.add_argument('--beta', type=float, default=0.99)
-parser.add_argument('--gamma', type=float, default=0.001)
+parser.add_argument('--beta', type=float, default=0.9)
+parser.add_argument('--gamma', type=float, default=0.1)
 parser.add_argument('--alpha_fp', type=float, default=0.00)
 parser.add_argument('--min_clip', type=float, default=1e-4)
 args = parser.parse_args()
@@ -64,12 +64,11 @@ lambda_range = all_lambdas_
 increment = 0
 for exp in np.arange(1000):
         ### generate epidemic
-    scenario = generate_scenario_with_graph(G, 
-                                            beta = beta, gamma =gamma,
-                alpha_fp =alpha_fp, 
-                n_init = 1, steps = steps,
-                epsilon=0.001, do_plot = False, min_clip=1e-5,
-                seed = args.seed)
+    scenario = generate_scenario_with_graph(G, beta = beta, gamma =gamma,
+                                            alpha_fp =alpha_fp, 
+                                            n_init = 1, steps = steps,
+                                            epsilon=0.001, do_plot = False, min_clip=1e-5,
+                                            seed = args.seed)
     print('Infected: ' + str(scenario['epidemic']['y_observed'].sum()))
     for lambda_ in all_lambdas_:
         start_time = time.time() 
@@ -139,7 +138,8 @@ for exp in np.arange(1000):
         results_df.loc[increment] = temp_res
         increment += 1
         res_ssnal[np.where(res_ssnal <min_clip)[0]] = 0
-        results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/results_semi_synthetic' +  args.namefile + '.csv', index=False)
+        results_df.to_csv('/Users/cdonnat/Documents/epidemic_modelling/python/' +  args.namefile + '.csv', index=False)
+        #results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/results_semi_synthetic' +  args.namefile + '.csv', index=False)
         if np.mean(res_ssnal == 0) == 1:
             break
 
@@ -256,7 +256,7 @@ for exp in np.arange(1000):
     increment += 1
 
 
-    results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/results_semi_synthetic' +  args.namefile + '.csv', index=False)
-    #results_df.to_csv('/Users/cdonnat/Documents/epidemic_modelling/python/experiments/results/results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
+    #results_df.to_csv('/scratch/midway3/cdonnat/epidemics/python/experiments/results/results_semi_synthetic' +  args.namefile + '.csv', index=False)
+    results_df.to_csv('/Users/cdonnat/Documents/epidemic_modelling/python/experiments/results/results_algo_semi_synthetic' +  args.namefile + '.csv', index=False)
                 
 

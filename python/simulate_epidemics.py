@@ -29,7 +29,7 @@ def simulate_epidemic(W, y_init, beta_v, gamma_v,
     realized_state = np.zeros((n_nodes, steps + 1))
     realized_state[:, 0] = y_init
     for step in np.arange(1,steps):
-        #print("Step "  + str(step) + " sparsity: " + str((true_p > 0).sum() ))
+        print("Epidemic Generation Step "  + str(step) + " sparsity: " + str((true_p > 0).sum() ))
         if (true_p > 0).sum() <  0.8 * n_nodes:
                 #print("Using sparsity")
                 true_p = propagate_one_step_sparse(W, true_p, beta_v, gamma_v)
@@ -160,8 +160,7 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
         phi = 0.1
         df = generate_graph(n_nodes)
         weights = generate_weights(df, m, phi)
-        G = generate_graph_from_weights(df, weights, n_nodes
-                )
+        G = generate_graph_from_weights(df, weights, n_nodes)
     elif type_graph == "SBM":
         sizes = [int(n_nodes/m)] * m
         p_out = p/20
@@ -245,7 +244,6 @@ def generate_scenario(n_nodes = 1000, beta = 0.9, gamma =0.1,
 
 
 def generate_scenario_with_graph(G, 
-                      graph_params,
                       beta = 0.9, gamma = 0.1,
                       alpha_fp =0.001, 
                       n_init = 1, steps = 20,
@@ -254,26 +252,18 @@ def generate_scenario_with_graph(G,
                       min_clip=0):
     
     n_nodes = nx.number_of_nodes(G)
-    degree = np.asarray(nx.degree(G))[:,1]
-    d_max = degree.max()
+    degree = nx.degree(G)
     #d_max = np.asarray(nx.degree(G))[:,1].mean()
     weights = [None] * nx.number_of_edges(G)
     W_binary = nx.adjacency_matrix(G, weight = None)
     it = 0
     for (u, v) in G.edges():
-        if graph_params['graph_type'] == "ER":
-            G[u][v]['weight'] = graph_params['p']  
-            weights[it] = graph_params['p']  #random.uniform(0, 10)  # Random weight between 0 and 10
-        elif graph_params['graph_type'] == "SBM":
-            Z_u = graph_params['Z'][u]
-            Z_v = graph_params['Z'][v]
-            G[u][v]['weight'] =graph_params['Omega'][Z_u, Z_v] 
-            weights[it] = graph_params['Omega'][Z_u, Z_v]
-        else:
-            d_u = degree[u]
-            G[u][v]['weight'] = 1./d_u
-            weights[it] = 1./ d_u
+        d_u = degree[u]
+        d_v = degree[v]
+        G[u][v]['weight'] = 1./np.max([d_u, d_v])
+        weights[it] = 1./np.max([d_u, d_v])
         it += 1
+    print("Done with edges")
     W = nx.adjacency_matrix(G)
     Gamma = nx.incidence_matrix(G, oriented=True, weight = 'weight')
     Gamma0 = nx.incidence_matrix(G, oriented=True)
@@ -293,11 +283,12 @@ def generate_scenario_with_graph(G,
                 edge_color='gray')
         plt.show()
 
-    
+    print("Starting epidemic simulation")
     epidemic = simulate_epidemic(W, y_init, beta_v, gamma_v,
                 steps = steps,
                 alpha_fp = alpha_fp, seed=seed,
                 min_clip=min_clip)
+    print("Done with epidemic simulation")
     if do_plot:
         for i in np.arange(steps + 1):
             plt.figure()
